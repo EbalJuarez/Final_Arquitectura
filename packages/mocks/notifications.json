@@ -1,0 +1,112 @@
+{
+  "uuid": "b1f5c0de-0000-4000-8000-000000000001",
+  "lastMigration": 33,
+  "name": "ReservaLab Notificaciones",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3001,
+  "hostname": "",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "b1f5c0de-0000-4000-8000-000000000011",
+      "type": "http",
+      "documentation": "Notificación simulada: reservation-confirmed",
+      "method": "post",
+      "endpoint": "notifications/reservation-confirmed",
+      "responses": [
+        {
+          "uuid": "b1f5c0de-0000-4000-8000-000000000021",
+          "body": "{\n  \"status\": \"accepted\",\n  \"event\": \"reservation-confirmed\"\n}",
+          "latency": 0,
+          "statusCode": 202,
+          "label": "Aceptada",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "b1f5c0de-0000-4000-8000-000000000012",
+      "type": "http",
+      "documentation": "Notificación simulada: reservation-cancelled",
+      "method": "post",
+      "endpoint": "notifications/reservation-cancelled",
+      "responses": [
+        {
+          "uuid": "b1f5c0de-0000-4000-8000-000000000022",
+          "body": "{\n  \"status\": \"accepted\",\n  \"event\": \"reservation-cancelled\"\n}",
+          "latency": 0,
+          "statusCode": 202,
+          "label": "Aceptada",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "b1f5c0de-0000-4000-8000-000000000011"
+    },
+    {
+      "type": "route",
+      "uuid": "b1f5c0de-0000-4000-8000-000000000012"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [],
+  "proxyReqHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "proxyResHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "data": [],
+  "callbacks": []
+}
