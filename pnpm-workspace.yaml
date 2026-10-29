@@ -2,8 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# pnpm 10 bloquea los scripts de instalación; Prisma los necesita para sus motores y el cliente.
+# pnpm 10 bloquea los scripts de instalación; Prisma (motores y cliente) y esbuild (usado por tsx) los necesitan.
 onlyBuiltDependencies:
   - "@prisma/client"
   - "@prisma/engines"
   - prisma
+  - esbuild
