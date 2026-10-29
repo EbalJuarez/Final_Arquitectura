@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prisma": "node --env-file=../../.env ./node_modules/prisma/build/index.js",
+    "db:generate": "pnpm prisma generate",
+    "db:migrate": "pnpm prisma migrate dev",
+    "db:deploy": "pnpm prisma migrate deploy"
   },
   "dependencies": {
+    "@prisma/client": "6.19.3",
     "@reservalab/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "prisma": "6.19.3"
   }
 }

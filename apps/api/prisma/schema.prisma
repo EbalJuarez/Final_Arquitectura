@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ESTUDIANTE
+  DOCENTE
+  ADMIN
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          Role           @default(ESTUDIANTE)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  refreshTokens RefreshToken[]
+  reservations  Reservation[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Space {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  building     String
+  capacity     Int
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  reservations Reservation[]
+}
+
+// Restricciones adicionales (EXCLUDE sin traslapes y CHECK endsAt > startsAt)
+// viven en la migración SQL manual 20261029015948_reservation_constraints.
+model Reservation {
+  id        String            @id @default(uuid()) @db.Uuid
+  spaceId   String            @db.Uuid
+  userId    String            @db.Uuid
+  startsAt  DateTime          @db.Timestamptz(3)
+  endsAt    DateTime          @db.Timestamptz(3)
+  status    ReservationStatus @default(CONFIRMED)
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  space     Space             @relation(fields: [spaceId], references: [id], onDelete: Restrict)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([spaceId, startsAt, endsAt])
+  @@index([userId])
+}
+
+model ApiKey {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  prefix      String
+  keyHash     String    @unique
+  permissions String[]
+  lastUsedAt  DateTime? @db.Timestamptz(3)
+  revokedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([prefix])
+}
