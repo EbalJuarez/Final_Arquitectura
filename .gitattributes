@@ -1,0 +1,2 @@
+# Saltos de línea LF en todo el repo (las migraciones de Prisma se validan por checksum)
+* text=auto eol=lf
