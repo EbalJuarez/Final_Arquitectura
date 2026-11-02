@@ -96,15 +96,15 @@ curl -X POST $API/logout -H "Authorization: Bearer $ACCESS" \
 
 ## Espacios y disponibilidad
 
-Todas las rutas están bajo `/api/v1/spaces` y exigen access token.
+Todas las rutas están bajo `/api/v1/spaces`. Las de lectura aceptan un access token o una [API key](#api-keys-para-sistemas-externos) con `read:spaces`; las de escritura exigen access token de ADMIN.
 
 | Método | Ruta | Rol | Respuesta |
 |---|---|---|---|
-| GET | `/spaces?building=&minCapacity=` | Cualquiera | `200` con la lista. `building` no distingue mayúsculas; ambos filtros son opcionales |
+| GET | `/spaces?building=&minCapacity=` | Cualquiera o API key | `200` con la lista. `building` no distingue mayúsculas; ambos filtros son opcionales |
 | POST | `/spaces` | ADMIN | `201` con el espacio. Cuerpo `{ name, building, capacity }` |
 | PATCH | `/spaces/:id` | ADMIN | `200` con el espacio. Cuerpo con al menos uno de los tres campos · `404` si no existe |
 | DELETE | `/spaces/:id` | ADMIN | `204` · `409` si tiene reservas CONFIRMED en curso o futuras · `404` si no existe |
-| GET | `/spaces/:id/availability?date=YYYY-MM-DD` | Cualquiera | `200` con los bloques ocupados y libres · `400` si la fecha no es válida · `404` si el espacio no existe |
+| GET | `/spaces/:id/availability?date=YYYY-MM-DD` | Cualquiera o API key | `200` con los bloques ocupados y libres · `400` si la fecha no es válida · `404` si el espacio no existe |
 
 - **Disponibilidad:** el día de `date` se interpreta en hora de Guatemala (UTC-6, sin horario de verano). Solo se consideran las reservas CONFIRMED dentro de la ventana de operación `OPENING_HOUR`–`CLOSING_HOUR` (7 a 21 por defecto). Los bloques libres son el complemento de los ocupados y todas las horas se devuelven con desfase `-06:00`.
 - **Borrado:** al borrar un espacio también se borra su historial de reservas pasadas o canceladas ([ADR 0003](docs/adr/0003-borrado-de-espacios.md)).
@@ -154,4 +154,45 @@ curl $API/reservations/me -H "Authorization: Bearer $ACCESS"
 
 # Cancelar
 curl -X DELETE $API/reservations/<id> -H "Authorization: Bearer $ACCESS"
+```
+
+## API keys para sistemas externos
+
+Los sistemas externos, como una pantalla en el lobby, leen los espacios con una API key en la cabecera `X-API-Key` en lugar de un JWT. El diseño se explica en [ADR 0006](docs/adr/0006-api-keys-y-limite-de-solicitudes.md).
+
+**Gestión.** Las rutas están bajo `/api/v1/api-keys` y son solo para ADMIN con access token. Una API key nunca puede usarlas.
+
+| Método | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| POST | `/api-keys` | `{ name, permissions }` | `201` con la key **completa**, que no se vuelve a mostrar |
+| GET | `/api-keys` | — | `200` con prefijo, nombre, permisos, `lastUsedAt` y `revokedAt` (nunca la key ni su hash) |
+| DELETE | `/api-keys/:id` | — | `200` con la key revocada · `404` si no existe · `409` si ya estaba revocada |
+
+- **Permisos:** `read:spaces` da acceso a `GET /spaces` y `GET /spaces/:id/availability`. `read:now` está reservado para un endpoint futuro.
+- **Errores:** una key inexistente, con otro formato o revocada responde `401 INVALID_API_KEY`. Una key sin el permiso necesario responde `403 FORBIDDEN`. Con una key, las reservas, la gestión y la escritura de espacios responden `401`.
+- **Ambas cabeceras:** si la solicitud trae `X-API-Key` y también `Authorization`, se usa la key.
+
+**Límite de solicitudes.** Cada key puede hacer `API_KEY_RATE_LIMIT_PER_MINUTE` solicitudes por minuto (60 por defecto), con una ventana fija que se reinicia al empezar cada minuto.
+- Las respuestas incluyen `X-RateLimit-Limit` y `X-RateLimit-Remaining`.
+- Al superar el límite se responde `429 RATE_LIMIT_EXCEEDED` con `Retry-After`, en segundos.
+- Si Redis no está disponible, la solicitud pasa sin límite y la API registra una advertencia.
+- Las solicitudes con JWT no cuentan.
+
+```bash
+API=http://localhost:3000/api/v1
+
+# Crear (ADMIN): guarda el campo "key" de la respuesta, no se vuelve a mostrar
+curl -X POST $API/api-keys -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json'   -d '{"name":"Pantalla del lobby","permissions":["read:spaces"]}'
+# → {"id":"…","prefix":"rl_live_Y32_ykYr","permissions":["read:spaces"],…,"key":"rl_live_Y32_ykYr1EBh…"}
+
+KEY=rl_live_...
+
+# Usarla
+curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "X-API-Key: $KEY"
+# → X-RateLimit-Limit: 60
+#   X-RateLimit-Remaining: 59
+
+# Listar y revocar (ADMIN)
+curl $API/api-keys -H "Authorization: Bearer $ACCESS"
+curl -X DELETE $API/api-keys/<id> -H "Authorization: Bearer $ACCESS"
 ```
