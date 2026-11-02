@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "prisma": "node --env-file=../../.env ./node_modules/prisma/build/index.js",
     "db:generate": "pnpm prisma generate",
     "db:migrate": "pnpm prisma migrate dev",

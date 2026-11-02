@@ -8,6 +8,8 @@
   "include": [
     "src",
     "prisma",
-    "vitest.config.ts"
+    "test",
+    "vitest.config.ts",
+    "vitest.integration.config.ts"
   ]
 }
