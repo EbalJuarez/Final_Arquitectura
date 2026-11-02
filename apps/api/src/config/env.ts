@@ -13,6 +13,9 @@ const EnvSchema = z
     // Ventana de operación de los espacios, en horas enteras de Guatemala
     OPENING_HOUR: z.coerce.number().int().min(0).max(23).default(7),
     CLOSING_HOUR: z.coerce.number().int().min(1).max(24).default(21),
+    // Servicio externo de notificaciones (Mockoon en desarrollo)
+    NOTIFICATIONS_URL: z.url(),
+    NOTIFICATIONS_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
   })
   .refine((env) => env.OPENING_HOUR < env.CLOSING_HOUR, {
     message: 'OPENING_HOUR debe ser menor que CLOSING_HOUR',

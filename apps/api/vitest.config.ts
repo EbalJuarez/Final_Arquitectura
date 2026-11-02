@@ -8,6 +8,7 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://prueba:prueba@localhost:5432/prueba',
       REDIS_URL: 'redis://localhost:6379',
       JWT_ACCESS_SECRET: 'secreto_solo_para_pruebas_unitarias',
+      NOTIFICATIONS_URL: 'http://notificaciones.prueba',
     },
     coverage: {
       provider: 'v8',
