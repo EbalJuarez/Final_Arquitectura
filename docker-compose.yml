@@ -21,6 +21,9 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Sin persistencia: Redis solo guarda caché y contadores del límite por minuto. Si se reiniciara con
+    # un snapshot, volverían claves cacheadas que no se pudieron invalidar mientras estaba caído.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     healthcheck:
