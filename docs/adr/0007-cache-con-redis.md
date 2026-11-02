@@ -35,6 +35,8 @@ Tres lecturas se repiten mucho y cambian poco: el listado de espacios, la dispon
 
 **Fail-open.** Si Redis falla o tarda más de 500 ms, ninguna función lanza: se registra una advertencia y la lectura cuenta como MISS y se resuelve en PostgreSQL. Si no se puede leer la versión del listado, se consulta la base sin usar la caché, para no leer con una versión equivocada.
 
+**Conexión lista antes de cada comando.** Antes de enviar cualquier comando se exige `redis.isReady`. Si no, la operación falla al instante. Lo descubrimos verificando la caída de Redis: aunque el cliente usa `disableOfflineQueue`, node-redis encola igual las transacciones `MULTI` y las ejecuta al reconectar. Redis volvía con claves escritas tarde, calculadas durante la caída, que podían pisar una invalidación fallida. Pasaba lo mismo con los contadores del límite por minuto.
+
 **Redis sin persistencia.** Redis solo guarda datos que se pueden reconstruir: caché y contadores de un minuto. Lo comprobamos: con el snapshot que trae la imagen por defecto, al reiniciar Redis volvía una disponibilidad cacheada que no se pudo invalidar mientras estaba caído, y la API respondía HIT con datos viejos.
 
 ## Alternativas descartadas
