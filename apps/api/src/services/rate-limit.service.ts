@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { withTimeout } from '../lib/with-timeout';
 import * as rateLimitRepository from '../repositories/rate-limit.repository';
 
 const WINDOW_MS = 60_000;
@@ -12,14 +13,6 @@ export interface RateLimitResult {
   remaining: number;
   // Segundos hasta que empiece la siguiente ventana
   retryAfterSeconds: number;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`Redis no respondió en ${ms} ms`)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // Ventana fija de 1 minuto por key: el contador se llama con el inicio del minuto y vence solo.
