@@ -42,12 +42,17 @@ La imagen se define en [`apps/api/Dockerfile`](apps/api/Dockerfile) y tiene tres
 ```bash
 pnpm typecheck          # tipos de todos los paquetes
 pnpm test               # pruebas unitarias con cobertura (no usan la base ni la red)
-pnpm test:integration   # pruebas de integración contra PostgreSQL real
+pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis reales
 ```
 
-Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar. Hoy comprueban dos cosas:
+Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Hoy comprueban tres cosas:
 - Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
 - El ciclo de vida de una API key: crearla, llamar a `/now` (200), revocarla y volver a llamar (401). También que una key sin `read:now` recibe 403.
+- La caché de disponibilidad:
+  - Dos consultas seguidas dan `MISS` y luego `HIT`.
+  - Después de reservar, la consulta da `MISS` y ya muestra el bloque ocupado. Después de cancelar vuelve a estar libre.
+  - Reservar en un espacio no toca la caché de otro.
+  - Los 404 y 400 no se guardan.
 
 Las utilidades comunes (servidor en un puerto libre, Redis conectado y usuario de prueba con token) están en `apps/api/test/integration/helpers.ts`.
 
@@ -236,3 +241,15 @@ curl http://localhost:3000/api/v1/now -H "X-API-Key: $KEY"
 curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "Authorization: Bearer $ACCESS"   # X-Cache: MISS
 curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "Authorization: Bearer $ACCESS"   # X-Cache: HIT
 ```
+
+### Medición de latencia
+
+`apps/api/scripts/bench-cache.ts` hace 200 solicitudes de disponibilidad con la caché vacía y 200 con la caché caliente, y reporta p50 y p95 de cada caso. Crea sus propios datos y los borra al terminar.
+
+```bash
+docker compose up -d
+pnpm --filter @reservalab/api bench:cache                                       # contra la API del contenedor
+BENCH_BASE_URL=http://localhost:3010 pnpm --filter @reservalab/api bench:cache  # contra otra instancia
+```
+
+En el equipo de desarrollo, el p50 bajó de unos 6 ms (MISS) a unos 2,3 ms (HIT). Las condiciones y los resultados completos están en [docs/benchmarks/cache.md](docs/benchmarks/cache.md).
