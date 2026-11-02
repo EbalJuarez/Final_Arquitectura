@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { CreateSpaceSchema, IdParamsSchema, SpaceFiltersSchema, UpdateSpaceSchema } from '@reservalab/shared';
+import {
+  AvailabilityQuerySchema,
+  CreateSpaceSchema,
+  IdParamsSchema,
+  SpaceFiltersSchema,
+  UpdateSpaceSchema,
+} from '@reservalab/shared';
 import * as spaceController from '../controllers/space.controller';
 import { authenticate } from '../middleware/authenticate';
 import { requireRole } from '../middleware/require-role';
@@ -12,6 +18,14 @@ spaceRouter.use(authenticate);
 
 // RF-05: cualquier usuario autenticado
 spaceRouter.get('/', validate(SpaceFiltersSchema, 'query'), spaceController.list);
+
+// RF-07: cualquier usuario autenticado
+spaceRouter.get(
+  '/:id/availability',
+  validate(IdParamsSchema, 'params'),
+  validate(AvailabilityQuerySchema, 'query'),
+  spaceController.availability,
+);
 
 // RF-06: solo ADMIN
 spaceRouter.post('/', requireRole('ADMIN'), validate(CreateSpaceSchema), spaceController.create);
