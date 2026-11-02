@@ -6,9 +6,10 @@ import {
   type CreatedApiKey,
 } from '@reservalab/shared';
 import { AppError } from '../errors/app-error';
-import { generateApiKey, hashApiKey } from '../lib/api-keys';
+import { API_KEY_PREFIX, generateApiKey, hashApiKey } from '../lib/api-keys';
 import * as apiKeyRepository from '../repositories/api-key.repository';
 import type { ApiKeyRecord } from '../repositories/api-key.repository';
+import type { ApiKeyPrincipal } from '../types/express';
 
 // La base guarda los permisos como texto; se ignora cualquiera que ya no exista en el catálogo.
 function toPermissions(values: string[]): ApiKeyPermission[] {
@@ -56,4 +57,31 @@ export async function revokeApiKey(id: string, now = new Date()): Promise<ApiKey
     throw new AppError(409, 'API_KEY_ALREADY_REVOKED', 'La API key ya estaba revocada');
   }
   return toApiKey(revoked);
+}
+
+// Verifica la key de la cabecera X-API-Key: 401 si no existe o está revocada, 403 si le falta el permiso.
+export async function authenticateApiKey(
+  rawKey: string,
+  permission: ApiKeyPermission,
+  now = new Date(),
+): Promise<ApiKeyPrincipal> {
+  const record = rawKey.startsWith(API_KEY_PREFIX)
+    ? await apiKeyRepository.findApiKeyByHash(hashApiKey(rawKey))
+    : null;
+  if (!record || record.revokedAt) {
+    throw new AppError(401, 'INVALID_API_KEY', 'API key inválida o revocada');
+  }
+
+  const permissions = toPermissions(record.permissions);
+  if (!permissions.includes(permission)) {
+    throw new AppError(403, 'FORBIDDEN', `La API key no tiene el permiso ${permission}`);
+  }
+
+  // No se espera: la respuesta no se retrasa por esta escritura y un fallo solo se registra.
+  apiKeyRepository.updateLastUsedAt(record.id, now).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`[api-keys] No se pudo actualizar lastUsedAt de ${record.prefix}: ${reason}`);
+  });
+
+  return { id: record.id, prefix: record.prefix, permissions };
 }
