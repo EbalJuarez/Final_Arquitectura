@@ -61,6 +61,10 @@ describe('createApiKey', () => {
       permissions: ['read:spaces'],
     });
     expect(data).not.toHaveProperty('key');
+    // Lo guardado no es la key ni la contiene: es un SHA-256 en hexadecimal
+    expect(data.keyHash).not.toBe(created.key);
+    expect(data.keyHash).not.toContain(created.key.slice('rl_live_'.length));
+    expect(data.keyHash).toMatch(/^[0-9a-f]{64}$/);
     expect(created).toMatchObject({ prefix: created.key.slice(0, 16), revokedAt: null });
     expect(created).not.toHaveProperty('keyHash');
   });
