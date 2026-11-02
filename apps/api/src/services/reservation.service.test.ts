@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeCache, fakeCacheModule } from '../../test/fake-cache';
 import * as notificationsClient from '../clients/notifications.client';
 import { AppError } from '../errors/app-error';
 import * as reservationRepository from '../repositories/reservation.repository';
@@ -20,6 +21,8 @@ vi.mock('../clients/notifications.client', () => ({
   notifyReservationConfirmed: vi.fn(),
   notifyReservationCancelled: vi.fn(),
 }));
+// Caché en memoria
+vi.mock('../lib/cache', async () => (await import('../../test/fake-cache')).fakeCacheModule);
 
 const reservations = vi.mocked(reservationRepository);
 const spaces = vi.mocked(spaceRepository);
@@ -71,6 +74,7 @@ function expectTimesError(startsAt: string, endsAt: string, code: string): void 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fakeCache.reset();
   spaces.findSpaceById.mockResolvedValue({
     id: SPACE_ID,
     name: 'Laboratorio de Redes',
@@ -295,5 +299,87 @@ describe('cancelReservation', () => {
 
     expect(result.status).toBe('CANCELLED');
     await vi.waitFor(() => expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('cancelled')));
+  });
+});
+
+describe('invalidación de caché', () => {
+  // La reserva de prueba es el 2026-11-04 de 9 a 11 en Guatemala
+  const AVAILABILITY_KEY = `availability:${SPACE_ID}:2026-11-04`;
+
+  beforeEach(() => {
+    fakeCache.store.set(AVAILABILITY_KEY, { cacheada: true });
+    fakeCache.store.set(`availability:${SPACE_ID}:2026-11-05`, { cacheada: true });
+    fakeCache.store.set('now', { cacheada: true });
+  });
+
+  it('al crear borra la disponibilidad de ese espacio y fecha, y /now; no toca otras fechas', async () => {
+    reservations.createReservation.mockResolvedValue({ status: 'CREATED', reservation: makeReservation() });
+
+    await reservationService.createReservation(DOCENTE, input, NOW);
+
+    expect([...fakeCache.store.keys()]).toEqual([`availability:${SPACE_ID}:2026-11-05`]);
+  });
+
+  it('invalida después de guardar en la base, no antes', async () => {
+    reservations.createReservation.mockResolvedValue({ status: 'CREATED', reservation: makeReservation() });
+
+    await reservationService.createReservation(DOCENTE, input, NOW);
+
+    const saved = reservations.createReservation.mock.invocationCallOrder[0]!;
+    const invalidated = fakeCacheModule.del.mock.invocationCallOrder[0]!;
+    expect(invalidated).toBeGreaterThan(saved);
+  });
+
+  it('usa la fecha de Guatemala: una reserva de 19:00 a 20:30 el día 4 es el 5 en UTC', async () => {
+    const evening = makeReservation({
+      startsAt: new Date('2026-11-04T19:00:00-06:00'),
+      endsAt: new Date('2026-11-04T20:30:00-06:00'),
+    });
+    reservations.createReservation.mockResolvedValue({ status: 'CREATED', reservation: evening });
+
+    await reservationService.createReservation(
+      DOCENTE,
+      { spaceId: SPACE_ID, startsAt: '2026-11-04T19:00:00-06:00', endsAt: '2026-11-04T20:30:00-06:00' },
+      NOW,
+    );
+
+    expect(fakeCacheModule.del).toHaveBeenCalledWith(AVAILABILITY_KEY, 'now');
+  });
+
+  it('si la creación falla (traslape) no invalida nada', async () => {
+    reservations.createReservation.mockResolvedValue({ status: 'OVERLAP' });
+
+    await expectAppError(reservationService.createReservation(DOCENTE, input, NOW), 409, 'RESERVATION_OVERLAP');
+    expect(fakeCacheModule.del).not.toHaveBeenCalled();
+    expect(fakeCache.store.size).toBe(3);
+  });
+
+  it('al cancelar borra la disponibilidad de ese espacio y fecha, y /now', async () => {
+    reservations.findReservationById.mockResolvedValue(makeReservation());
+    reservations.cancelReservation.mockResolvedValue(makeReservation({ status: 'CANCELLED' }));
+
+    await reservationService.cancelReservation(DOCENTE, RESERVATION_ID);
+
+    expect([...fakeCache.store.keys()]).toEqual([`availability:${SPACE_ID}:2026-11-05`]);
+  });
+
+  it('si la cancelación falla (ya cancelada) no invalida nada', async () => {
+    reservations.findReservationById.mockResolvedValue(makeReservation({ status: 'CANCELLED' }));
+
+    await expectAppError(
+      reservationService.cancelReservation(DOCENTE, RESERVATION_ID),
+      409,
+      'RESERVATION_ALREADY_CANCELLED',
+    );
+    expect(fakeCacheModule.del).not.toHaveBeenCalled();
+  });
+
+  it('con Redis caído la reserva se crea igual', async () => {
+    fakeCache.goDown();
+    reservations.createReservation.mockResolvedValue({ status: 'CREATED', reservation: makeReservation() });
+
+    await expect(reservationService.createReservation(DOCENTE, input, NOW)).resolves.toMatchObject({
+      status: 'CONFIRMED',
+    });
   });
 });

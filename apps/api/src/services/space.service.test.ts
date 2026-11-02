@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeCache } from '../../test/fake-cache';
+import { fakeCache, fakeCacheModule } from '../../test/fake-cache';
 import { AppError } from '../errors/app-error';
 import * as spaceRepository from '../repositories/space.repository';
 import type { SpaceRecord } from '../repositories/space.repository';
@@ -186,5 +186,81 @@ describe('deleteSpace', () => {
     spaces.deleteSpace.mockResolvedValue('NOT_FOUND');
 
     await expectAppError(spaceService.deleteSpace(SPACE_ID, NOW), 404, 'SPACE_NOT_FOUND');
+  });
+});
+
+describe('invalidación de caché', () => {
+  const NOW = new Date('2026-11-02T18:00:00Z');
+
+  beforeEach(() => {
+    fakeCache.versions.set('spaces', 5);
+    fakeCache.store.set(`availability:${SPACE_ID}:2026-11-04`, {});
+    fakeCache.groups.set(`availability-keys:${SPACE_ID}`, new Set([`availability:${SPACE_ID}:2026-11-04`]));
+    fakeCache.store.set('availability:otro-espacio:2026-11-04', {});
+    fakeCache.store.set('now', {});
+  });
+
+  function expectInvalidated(): void {
+    expect(fakeCache.versions.get('spaces')).toBe(6);
+    expect([...fakeCache.store.keys()]).toEqual(['availability:otro-espacio:2026-11-04']);
+  }
+
+  function expectUntouched(): void {
+    expect(fakeCache.versions.get('spaces')).toBe(5);
+    expect(fakeCache.store.size).toBe(3);
+  }
+
+  it('al crear un espacio sube la versión del listado y borra /now', async () => {
+    spaces.createSpace.mockResolvedValue(makeSpace());
+
+    await spaceService.createSpace({ name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 30 });
+
+    expectInvalidated();
+  });
+
+  it('al editar sube la versión, borra la disponibilidad de ese espacio (todas las fechas) y /now', async () => {
+    spaces.updateSpace.mockResolvedValue(makeSpace({ capacity: 40 }));
+
+    await spaceService.updateSpace(SPACE_ID, { capacity: 40 });
+
+    expectInvalidated();
+  });
+
+  it('al borrar sube la versión, borra la disponibilidad de ese espacio y /now, después de borrar en la base', async () => {
+    spaces.findSpaceById.mockResolvedValue(makeSpace());
+    spaces.hasActiveConfirmedReservations.mockResolvedValue(false);
+    spaces.deleteSpace.mockResolvedValue('DELETED');
+
+    await spaceService.deleteSpace(SPACE_ID, NOW);
+
+    expectInvalidated();
+    const deleted = spaces.deleteSpace.mock.invocationCallOrder[0]!;
+    expect(fakeCacheModule.incrementVersion.mock.invocationCallOrder[0]!).toBeGreaterThan(deleted);
+  });
+
+  it('si la edición falla (404) no invalida nada', async () => {
+    spaces.updateSpace.mockResolvedValue(null);
+
+    await spaceService.updateSpace(SPACE_ID, { capacity: 40 }).catch(() => undefined);
+
+    expectUntouched();
+  });
+
+  it('si el borrado falla (409) no invalida nada', async () => {
+    spaces.findSpaceById.mockResolvedValue(makeSpace());
+    spaces.hasActiveConfirmedReservations.mockResolvedValue(true);
+
+    await spaceService.deleteSpace(SPACE_ID, NOW).catch(() => undefined);
+
+    expectUntouched();
+  });
+
+  it('con Redis caído el espacio se crea igual', async () => {
+    fakeCache.goDown();
+    spaces.createSpace.mockResolvedValue(makeSpace());
+
+    await expect(
+      spaceService.createSpace({ name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 30 }),
+    ).resolves.toMatchObject({ id: SPACE_ID });
   });
 });

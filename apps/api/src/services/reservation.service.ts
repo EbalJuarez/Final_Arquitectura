@@ -3,10 +3,12 @@ import * as notificationsClient from '../clients/notifications.client';
 import type { ReservationNotification } from '../clients/notifications.client';
 import { BUSINESS_UTC_OFFSET_MINUTES, CLOSING_HOUR, OPENING_HOUR } from '../config/schedule';
 import { AppError } from '../errors/app-error';
+import * as cache from '../lib/cache';
 import * as reservationRepository from '../repositories/reservation.repository';
 import type { ReservationRecord } from '../repositories/reservation.repository';
 import type { AuthUser } from '../types/express';
 import { getDayWindow, toOffsetIso } from './availability.service';
+import { NOW_KEY, availabilityKey } from './cache-keys';
 import { getSpaceRecord } from './space.service';
 
 const overlapError = () =>
@@ -48,6 +50,14 @@ function notifyInBackground(kind: 'confirmed' | 'cancelled', reservation: Reserv
     const reason = error instanceof Error ? error.message : String(error);
     console.error(`[notificaciones] No se pudo notificar ${kind} de la reserva ${reservation.id}: ${reason}`);
   });
+}
+
+// Se llama DESPUÉS de confirmar la escritura en la base. Borra la disponibilidad del espacio para el día
+// de la reserva (en hora de Guatemala; una reserva nunca cruza de día) y la pantalla de /now.
+// La caché nunca lanza: si Redis falla solo se registra y la reserva no se revierte.
+async function invalidateReservationCaches(reservation: ReservationRecord): Promise<void> {
+  const date = toOffsetIso(reservation.startsAt, BUSINESS_UTC_OFFSET_MINUTES).slice(0, 10);
+  await cache.del(availabilityKey(reservation.spaceId, date), NOW_KEY);
 }
 
 // Reglas de horario: rango válido, no en el pasado y dentro de la ventana de operación de un
@@ -99,8 +109,7 @@ export async function createReservation(
     throw overlapError();
   }
 
-  // TODO(Fase 4): invalidar en Redis la caché de disponibilidad del espacio result.reservation.spaceId
-  // para el día de la reserva.
+  await invalidateReservationCaches(result.reservation);
   notifyInBackground('confirmed', result.reservation);
   return toReservation(result.reservation);
 }
@@ -133,8 +142,7 @@ export async function cancelReservation(user: AuthUser, reservationId: string): 
     throw alreadyCancelled();
   }
 
-  // TODO(Fase 4): invalidar en Redis la caché de disponibilidad del espacio cancelled.spaceId
-  // para el día de la reserva.
+  await invalidateReservationCaches(cancelled);
   notifyInBackground('cancelled', cancelled);
   return toReservation(cancelled);
 }
