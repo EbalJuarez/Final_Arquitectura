@@ -8,6 +8,7 @@ vi.mock('./redis', () => {
   const sets = new Map<string, Set<string>>();
   const ttls = new Map<string, number>();
   const client = {
+    isReady: true,
     store,
     sets,
     ttls,
@@ -48,10 +49,16 @@ vi.mock('./redis', () => {
       return multi;
     }),
   };
-  return { redis: client };
+  return {
+    redis: client,
+    assertRedisReady: () => {
+      if (!client.isReady) throw new Error('Redis no está conectado');
+    },
+  };
 });
 
 interface FakeRedis {
+  isReady: boolean;
   store: Map<string, string>;
   sets: Map<string, Set<string>>;
   ttls: Map<string, number>;
@@ -66,6 +73,7 @@ const fake = redis as unknown as FakeRedis;
 let consoleWarn: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  fake.isReady = true;
   fake.store.clear();
   fake.sets.clear();
   fake.ttls.clear();
@@ -223,6 +231,22 @@ describe('fail-open: si Redis falla nunca lanza', () => {
 
     await expect(cache.remember('clave', async () => 'dato')).resolves.toEqual({ data: 'dato', cache: 'MISS' });
     expect(fake.store.has('clave')).toBe(false);
+  });
+
+  it('sin conexión lista no envía ningún comando (un MULTI encolado se ejecutaría al reconectar)', async () => {
+    fake.isReady = false;
+
+    await expect(cache.get('clave')).resolves.toBeNull();
+    await cache.set('clave', 'dato');
+    await cache.del('clave');
+    await cache.incrementVersion('spaces');
+    await expect(cache.remember('clave', async () => 'dato')).resolves.toEqual({ data: 'dato', cache: 'MISS' });
+
+    expect(fake.get).not.toHaveBeenCalled();
+    expect(fake.multi).not.toHaveBeenCalled();
+    expect(fake.del).not.toHaveBeenCalled();
+    expect(fake.incr).not.toHaveBeenCalled();
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('Redis no está conectado'));
   });
 
   it('si Redis no contesta en 500 ms se trata como MISS', async () => {

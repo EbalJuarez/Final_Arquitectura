@@ -1,5 +1,5 @@
 import { env } from '../config/env';
-import { redis } from './redis';
+import { assertRedisReady, redis } from './redis';
 import { withTimeout } from './with-timeout';
 
 // Caché de lecturas sobre Redis. Los valores se guardan en JSON.
@@ -19,6 +19,7 @@ const REDIS_TIMEOUT_MS = 500;
 
 async function attempt<T>(operation: string, run: () => Promise<T>): Promise<T | undefined> {
   try {
+    assertRedisReady();
     return await withTimeout(run(), REDIS_TIMEOUT_MS);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
