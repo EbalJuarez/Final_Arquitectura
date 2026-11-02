@@ -113,6 +113,31 @@ export const AvailabilityResponseSchema = z.object({
 });
 export type AvailabilityResponse = z.infer<typeof AvailabilityResponseSchema>;
 
+// Estados de una reserva
+export const ReservationStatusSchema = z.enum(['CONFIRMED', 'CANCELLED']);
+export type ReservationStatus = z.infer<typeof ReservationStatusSchema>;
+
+// Datos para crear una reserva. Las horas van en ISO 8601 con desfase o en UTC,
+// por ejemplo 2026-11-03T09:00:00-06:00 o 2026-11-03T15:00:00Z.
+export const CreateReservationSchema = z.object({
+  spaceId: z.uuid(),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+});
+export type CreateReservationInput = z.infer<typeof CreateReservationSchema>;
+
+// Reserva tal como la devuelve la API (horas con el desfase de Guatemala, -06:00)
+export const ReservationSchema = z.object({
+  id: z.uuid(),
+  space: z.object({ id: z.uuid(), name: z.string(), building: z.string() }),
+  userId: z.uuid(),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+  status: ReservationStatusSchema,
+  createdAt: z.iso.datetime(),
+});
+export type Reservation = z.infer<typeof ReservationSchema>;
+
 // Formato común de los errores de la API
 export interface ErrorResponse {
   error: {
