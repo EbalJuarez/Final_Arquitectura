@@ -63,3 +63,39 @@ curl -X POST $API/refresh -H 'Content-Type: application/json' \
 curl -X POST $API/logout -H "Authorization: Bearer $ACCESS" \
   -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$REFRESH\"}"
 ```
+
+> En Git Bash de Windows, `curl -d` con acentos (`"Ana Pérez"`) envía el texto mal codificado. Para evitarlo, guarda el JSON en un archivo UTF-8 y envíalo con `--data-binary @archivo.json`.
+
+## Espacios y disponibilidad
+
+Todas las rutas están bajo `/api/v1/spaces` y exigen access token.
+
+| Método | Ruta | Rol | Respuesta |
+|---|---|---|---|
+| GET | `/spaces?building=&minCapacity=` | Cualquiera | `200` con la lista. `building` no distingue mayúsculas; ambos filtros son opcionales |
+| POST | `/spaces` | ADMIN | `201` con el espacio. Cuerpo `{ name, building, capacity }` |
+| PATCH | `/spaces/:id` | ADMIN | `200` con el espacio. Cuerpo con al menos uno de los tres campos · `404` si no existe |
+| DELETE | `/spaces/:id` | ADMIN | `204` · `409` si tiene reservas CONFIRMED en curso o futuras · `404` si no existe |
+| GET | `/spaces/:id/availability?date=YYYY-MM-DD` | Cualquiera | `200` con los bloques ocupados y libres · `400` si la fecha no es válida · `404` si el espacio no existe |
+
+- **Disponibilidad:** el día de `date` se interpreta en hora de Guatemala (UTC-6, sin horario de verano). Solo se consideran las reservas CONFIRMED dentro de la ventana de operación `OPENING_HOUR`–`CLOSING_HOUR` (7 a 21 por defecto). Los bloques libres son el complemento de los ocupados y todas las horas se devuelven con desfase `-06:00`.
+- **Borrado:** al borrar un espacio también se borra su historial de reservas pasadas o canceladas ([ADR 0003](docs/adr/0003-borrado-de-espacios.md)).
+
+```bash
+API=http://localhost:3000/api/v1
+
+# Listado filtrado
+curl "$API/spaces?building=Edificio%20A&minCapacity=25" -H "Authorization: Bearer $ACCESS"
+
+# Crear (ADMIN)
+curl -X POST $API/spaces -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d '{"name":"Laboratorio de Redes","building":"Edificio A","capacity":30}'
+
+# Disponibilidad de un día
+curl "$API/spaces/<id>/availability?date=2026-11-03" -H "Authorization: Bearer $ACCESS"
+# → {"date":"2026-11-03","timezone":"America/Guatemala",
+#    "window":{"startsAt":"2026-11-03T07:00:00-06:00","endsAt":"2026-11-03T21:00:00-06:00"},
+#    "occupied":[{"startsAt":"2026-11-03T09:00:00-06:00","endsAt":"2026-11-03T11:00:00-06:00"}],
+#    "free":[{"startsAt":"2026-11-03T07:00:00-06:00","endsAt":"2026-11-03T09:00:00-06:00"},
+#            {"startsAt":"2026-11-03T11:00:00-06:00","endsAt":"2026-11-03T21:00:00-06:00"}], ...}
+```
