@@ -17,7 +17,15 @@ pnpm --filter @reservalab/api db:seed     # crea admin@, docente@ y estudiante@r
 pnpm --filter @reservalab/api dev         # API en http://localhost:3000/api/v1
 ```
 
-Pruebas y tipos: `pnpm test` y `pnpm typecheck` desde la raíz.
+## Pruebas
+
+```bash
+pnpm typecheck          # tipos de todos los paquetes
+pnpm test               # pruebas unitarias con cobertura (no usan la base ni la red)
+pnpm test:integration   # pruebas de integración contra PostgreSQL real
+```
+
+Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar. Hoy comprueban que dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
 
 ## Autenticación
 
@@ -111,8 +119,8 @@ Todas las rutas están bajo `/api/v1/reservations` y exigen access token.
 | DELETE | `/reservations/:id` | El dueño o un ADMIN | `200` con la reserva en `CANCELLED` (la fila no se borra) · `403` si no es suya · `404` si no existe · `409` si ya estaba cancelada |
 
 - **Horas:** `startsAt` y `endsAt` van en ISO 8601 con desfase (`2026-11-04T09:00:00-06:00`) o en UTC (`…Z`). La reserva debe quedar dentro de un mismo día y de la ventana de operación en hora de Guatemala.
-- **Traslapes:** dos reservas CONFIRMED del mismo espacio no pueden traslaparse. Las contiguas (una termina cuando empieza la otra) sí se permiten, y las canceladas no bloquean.
-- **Notificaciones:** al confirmar o cancelar se avisa a `NOTIFICATIONS_URL` en segundo plano. Si el servicio falla o tarda más de 2 s, el error queda en el log y la reserva se mantiene ([ADR 0004](docs/adr/0004-notificaciones-y-traslapes.md)). En desarrollo se pueden ver con `docker compose logs notifications`.
+- **Traslapes:** dos reservas CONFIRMED del mismo espacio no pueden traslaparse. Las contiguas (una termina cuando empieza la otra) sí se permiten, y las canceladas no bloquean. Se valida en el servicio y lo garantiza una restricción EXCLUDE de PostgreSQL, también ante solicitudes simultáneas ([ADR 0004](docs/adr/0004-proteccion-de-traslapes.md)).
+- **Notificaciones:** al confirmar o cancelar se avisa a `NOTIFICATIONS_URL` en segundo plano. Si el servicio falla o tarda más de 2 s, el error queda en el log y la reserva se mantiene ([ADR 0005](docs/adr/0005-notificaciones-tolerantes-a-fallos.md)). En desarrollo se pueden ver con `docker compose logs notifications`.
 
 ```bash
 API=http://localhost:3000/api/v1
