@@ -40,6 +40,36 @@ describe('createReservation', () => {
     await expect(createReservation(data)).resolves.toEqual({ status: 'OVERLAP' });
   });
 
+  describe('deadlock (40P01) entre dos INSERT simultáneos', () => {
+    const deadlock = () =>
+      new Prisma.PrismaClientUnknownRequestError(
+        'PostgresError { code: "40P01", message: "deadlock detected", severity: "ERROR" }',
+        { clientVersion: '6.19.3' },
+      );
+    const overlap = () => new Prisma.PrismaClientUnknownRequestError(EXCLUSION_MESSAGE, { clientVersion: '6.19.3' });
+
+    it('reintenta y devuelve OVERLAP si la otra transacción se confirmó', async () => {
+      create.mockRejectedValueOnce(deadlock()).mockRejectedValueOnce(overlap());
+
+      await expect(createReservation(data)).resolves.toEqual({ status: 'OVERLAP' });
+      expect(create).toHaveBeenCalledTimes(2);
+    });
+
+    it('reintenta y devuelve CREATED si la otra transacción no se confirmó', async () => {
+      create.mockRejectedValueOnce(deadlock()).mockResolvedValueOnce({ id: 'r1' } as never);
+
+      await expect(createReservation(data)).resolves.toEqual({ status: 'CREATED', reservation: { id: 'r1' } });
+    });
+
+    it('se rinde tras 3 intentos con deadlock', async () => {
+      const error = deadlock();
+      create.mockRejectedValue(error);
+
+      await expect(createReservation(data)).rejects.toBe(error);
+      expect(create).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it('no confunde otros errores de la base con un traslape', async () => {
     const checkViolation = new Prisma.PrismaClientUnknownRequestError(
       'PostgresError { code: "23514", message: "violates check constraint \\"Reservation_endsAt_after_startsAt\\"" }',

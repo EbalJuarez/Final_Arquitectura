@@ -39,6 +39,19 @@ function isOverlapViolation(error: unknown): boolean {
   );
 }
 
+// Dos INSERT traslapados exactamente al mismo tiempo pueden esperar cada uno la transacción del otro
+// para evaluar la restricción EXCLUDE; PostgreSQL lo detecta como deadlock (40P01) y aborta uno.
+// Llega igual que el 23P01 (comprobado con la prueba de integración). P2034 es el código con el que
+// Prisma reporta deadlocks en otros contextos.
+function isDeadlock(error: unknown): boolean {
+  return (
+    (error instanceof Prisma.PrismaClientUnknownRequestError && error.message.includes('40P01')) ||
+    (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034')
+  );
+}
+
+const MAX_CREATE_ATTEMPTS = 3;
+
 // Reservas CONFIRMED del espacio que se traslapan con [from, to), ordenadas por inicio.
 export function findConfirmedReservationsInRange(
   spaceId: string,
@@ -53,15 +66,22 @@ export function findConfirmedReservationsInRange(
 }
 
 // Si otra solicitud simultánea ganó el horario, la restricción EXCLUDE lo rechaza y se devuelve OVERLAP.
+// Ante un deadlock se reintenta: la otra transacción ya terminó, así que el reintento obtiene el
+// resultado real (OVERLAP si la otra se confirmó, o CREATED si no).
 export async function createReservation(data: CreateReservationData): Promise<CreateReservationResult> {
-  try {
-    const reservation = await prisma.reservation.create({ data, include: withRelations });
-    return { status: 'CREATED', reservation };
-  } catch (error) {
-    if (isOverlapViolation(error)) {
-      return { status: 'OVERLAP' };
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const reservation = await prisma.reservation.create({ data, include: withRelations });
+      return { status: 'CREATED', reservation };
+    } catch (error) {
+      if (isOverlapViolation(error)) {
+        return { status: 'OVERLAP' };
+      }
+      if (isDeadlock(error) && attempt < MAX_CREATE_ATTEMPTS) {
+        continue;
+      }
+      throw error;
     }
-    throw error;
   }
 }
 
