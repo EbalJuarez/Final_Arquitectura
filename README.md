@@ -25,7 +25,7 @@ Para tener recarga automática, se levantan solo los servicios de apoyo y la API
 
 ```bash
 pnpm install
-docker compose up -d postgres redis mockoon       # PostgreSQL (host 5433), Redis (6379) y Mockoon (3001)
+docker compose up -d postgres redis mockoon       # PostgreSQL (host 5433), Redis (6379, sin persistencia) y Mockoon (3001)
 pnpm --filter @reservalab/api db:deploy           # aplica las migraciones
 pnpm --filter @reservalab/api db:seed             # mismo seed que en Docker
 pnpm --filter @reservalab/api dev                 # API en http://localhost:3000/api/v1
@@ -220,4 +220,19 @@ curl http://localhost:3000/api/v1/now -H "X-API-Key: $KEY"
 #      "nextReservation":{"startsAt":"2026-11-02T16:19:48-06:00","endsAt":"2026-11-02T16:49:48-06:00"}},
 #     {"id":"…","name":"Lab Libre","building":"Edificio N","capacity":20,"status":"FREE",
 #      "occupiedUntil":null,"nextReservation":null}]}
+```
+
+## Caché
+
+`GET /spaces`, `GET /spaces/:id/availability` y `GET /now` se cachean en Redis por `CACHE_TTL_SECONDS` (60 s por defecto). El diseño se explica en [ADR 0007](docs/adr/0007-cache-con-redis.md).
+
+- **Cabecera `X-Cache`:** las respuestas 200 de estas rutas la llevan, con `MISS` si se calculó en la base y `HIT` si vino de la caché. Los errores (400, 404) no se cachean y no llevan la cabecera.
+- **Caché compartida:** las respuestas no dependen del usuario, así que un JWT y una API key comparten caché.
+- **Invalidación inmediata:** crear o cancelar una reserva invalida la disponibilidad de ese espacio y día, y `/now`. Crear, editar o borrar un espacio invalida el listado, su disponibilidad y `/now`. La siguiente consulta da `MISS` y ya muestra el cambio.
+- **`/now` vence sola** cuando se libera un espacio o empieza una reserva, aunque no hayan pasado 60 s.
+- **Si Redis no está disponible**, la API sigue respondiendo desde PostgreSQL, siempre con `X-Cache: MISS`, y registra una advertencia. Redis corre sin persistencia: solo guarda datos que se pueden reconstruir.
+
+```bash
+curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "Authorization: Bearer $ACCESS"   # X-Cache: MISS
+curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "Authorization: Bearer $ACCESS"   # X-Cache: HIT
 ```
