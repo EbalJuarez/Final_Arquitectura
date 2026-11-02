@@ -9,18 +9,26 @@ import {
 import * as spaceController from '../controllers/space.controller';
 import { authenticate } from '../middleware/authenticate';
 import { authenticateJwtOrApiKey } from '../middleware/authenticate-api-key';
+import { rateLimitApiKey } from '../middleware/rate-limit';
 import { requireRole } from '../middleware/require-role';
 import { validate } from '../middleware/validate';
 
 export const spaceRouter = Router();
 
-// RF-05: cualquier usuario autenticado o un sistema externo con una API key read:spaces
-spaceRouter.get('/', authenticateJwtOrApiKey('read:spaces'), validate(SpaceFiltersSchema, 'query'), spaceController.list);
+// RF-05: cualquier usuario autenticado o un sistema externo con una API key read:spaces (con límite por minuto)
+spaceRouter.get(
+  '/',
+  authenticateJwtOrApiKey('read:spaces'),
+  rateLimitApiKey,
+  validate(SpaceFiltersSchema, 'query'),
+  spaceController.list,
+);
 
-// RF-07: cualquier usuario autenticado o un sistema externo con una API key read:spaces
+// RF-07: cualquier usuario autenticado o un sistema externo con una API key read:spaces (con límite por minuto)
 spaceRouter.get(
   '/:id/availability',
   authenticateJwtOrApiKey('read:spaces'),
+  rateLimitApiKey,
   validate(IdParamsSchema, 'params'),
   validate(AvailabilityQuerySchema, 'query'),
   spaceController.availability,

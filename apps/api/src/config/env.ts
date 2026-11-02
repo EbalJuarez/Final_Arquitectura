@@ -16,6 +16,8 @@ const EnvSchema = z
     // Servicio externo de notificaciones (Mockoon en desarrollo)
     NOTIFICATIONS_URL: z.url(),
     NOTIFICATIONS_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
+    // Solicitudes por minuto que puede hacer cada API key
+    API_KEY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
   })
   .refine((env) => env.OPENING_HOUR < env.CLOSING_HOUR, {
     message: 'OPENING_HOUR debe ser menor que CLOSING_HOUR',
