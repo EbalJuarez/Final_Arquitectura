@@ -45,7 +45,11 @@ pnpm test               # pruebas unitarias con cobertura (no usan la base ni la
 pnpm test:integration   # pruebas de integración contra PostgreSQL real
 ```
 
-Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar. Hoy comprueban que dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
+Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar. Hoy comprueban dos cosas:
+- Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
+- El ciclo de vida de una API key: crearla, llamar a `/now` (200), revocarla y volver a llamar (401). También que una key sin `read:now` recibe 403.
+
+Las utilidades comunes (servidor en un puerto libre, Redis conectado y usuario de prueba con token) están en `apps/api/test/integration/helpers.ts`.
 
 ## Autenticación
 
@@ -160,6 +164,8 @@ curl -X DELETE $API/reservations/<id> -H "Authorization: Bearer $ACCESS"
 
 Los sistemas externos, como una pantalla en el lobby, leen los espacios con una API key en la cabecera `X-API-Key` en lugar de un JWT. El diseño se explica en [ADR 0006](docs/adr/0006-api-keys-y-limite-de-solicitudes.md).
 
+La key se muestra **una sola vez**, al crearla. La base guarda solo su hash SHA-256 y un prefijo para identificarla.
+
 **Gestión.** Las rutas están bajo `/api/v1/api-keys` y son solo para ADMIN con access token. Una API key nunca puede usarlas.
 
 | Método | Ruta | Cuerpo | Respuesta |
@@ -168,7 +174,7 @@ Los sistemas externos, como una pantalla en el lobby, leen los espacios con una 
 | GET | `/api-keys` | — | `200` con prefijo, nombre, permisos, `lastUsedAt` y `revokedAt` (nunca la key ni su hash) |
 | DELETE | `/api-keys/:id` | — | `200` con la key revocada · `404` si no existe · `409` si ya estaba revocada |
 
-- **Permisos:** `read:spaces` da acceso a `GET /spaces` y `GET /spaces/:id/availability`. `read:now` está reservado para un endpoint futuro.
+- **Permisos:** `read:now` da acceso a [`GET /now`](#pantalla-informativa-get-now). `read:spaces` da acceso a `GET /spaces` y `GET /spaces/:id/availability`.
 - **Errores:** una key inexistente, con otro formato o revocada responde `401 INVALID_API_KEY`. Una key sin el permiso necesario responde `403 FORBIDDEN`. Con una key, las reservas, la gestión y la escritura de espacios responden `401`.
 - **Ambas cabeceras:** si la solicitud trae `X-API-Key` y también `Authorization`, se usa la key.
 
@@ -195,4 +201,23 @@ curl -i "$API/spaces/<id>/availability?date=2026-11-10" -H "X-API-Key: $KEY"
 # Listar y revocar (ADMIN)
 curl $API/api-keys -H "Authorization: Bearer $ACCESS"
 curl -X DELETE $API/api-keys/<id> -H "Authorization: Bearer $ACCESS"
+```
+
+## Pantalla informativa: `GET /now`
+
+Muestra el estado de todos los espacios en este momento. **Solo acepta una API key con `read:now`**: con un JWT responde 401, y con una key sin ese permiso, 403. Tiene el mismo límite por minuto que las demás rutas con key.
+
+- **Hora actual:** la toma del reloj del servidor y la expresa en hora de Guatemala (`-06:00`). El "día" es el de Guatemala, de 00:00 a 24:00.
+- **`status`:** `OCCUPIED` si hay una reserva CONFIRMED en curso, `FREE` si no. En el minuto exacto de inicio de una reserva el espacio ya está ocupado, y en el minuto exacto de fin ya está libre.
+- **`occupiedUntil`:** la hora en que se libera. Si hay reservas seguidas sin hueco (9:00–10:00 y 10:00–11:00), es el fin de la última.
+- **`nextReservation`:** la siguiente reserva del día que empieza cuando el espacio ya está libre, o `null` si no hay. No incluye quién reservó.
+
+```bash
+curl http://localhost:3000/api/v1/now -H "X-API-Key: $KEY"
+# → {"now":"2026-11-02T15:09:48-06:00","timezone":"America/Guatemala","spaces":[
+#     {"id":"…","name":"Lab Ocupado","building":"Edificio N","capacity":20,"status":"OCCUPIED",
+#      "occupiedUntil":"2026-11-02T15:59:48-06:00",
+#      "nextReservation":{"startsAt":"2026-11-02T16:19:48-06:00","endsAt":"2026-11-02T16:49:48-06:00"}},
+#     {"id":"…","name":"Lab Libre","building":"Edificio N","capacity":20,"status":"FREE",
+#      "occupiedUntil":null,"nextReservation":null}]}
 ```
