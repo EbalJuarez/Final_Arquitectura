@@ -11,6 +11,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "bench:cache": "tsx --env-file=../../.env scripts/bench-cache.ts",
     "prisma": "node --env-file=../../.env ./node_modules/prisma/build/index.js",
     "db:generate": "pnpm prisma generate",
     "db:migrate": "pnpm prisma migrate dev",
