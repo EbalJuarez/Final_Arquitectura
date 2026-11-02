@@ -99,3 +99,31 @@ curl "$API/spaces/<id>/availability?date=2026-11-03" -H "Authorization: Bearer $
 #    "free":[{"startsAt":"2026-11-03T07:00:00-06:00","endsAt":"2026-11-03T09:00:00-06:00"},
 #            {"startsAt":"2026-11-03T11:00:00-06:00","endsAt":"2026-11-03T21:00:00-06:00"}], ...}
 ```
+
+## Reservas
+
+Todas las rutas están bajo `/api/v1/reservations` y exigen access token.
+
+| Método | Ruta | Quién | Respuesta |
+|---|---|---|---|
+| POST | `/reservations` | DOCENTE o ADMIN | `201` con la reserva · `400` horario inválido, en el pasado o fuera de la ventana · `404` espacio inexistente · `409` traslape |
+| GET | `/reservations/me` | Cualquiera | `200` con las reservas del usuario (confirmadas y canceladas) |
+| DELETE | `/reservations/:id` | El dueño o un ADMIN | `200` con la reserva en `CANCELLED` (la fila no se borra) · `403` si no es suya · `404` si no existe · `409` si ya estaba cancelada |
+
+- **Horas:** `startsAt` y `endsAt` van en ISO 8601 con desfase (`2026-11-04T09:00:00-06:00`) o en UTC (`…Z`). La reserva debe quedar dentro de un mismo día y de la ventana de operación en hora de Guatemala.
+- **Traslapes:** dos reservas CONFIRMED del mismo espacio no pueden traslaparse. Las contiguas (una termina cuando empieza la otra) sí se permiten, y las canceladas no bloquean.
+- **Notificaciones:** al confirmar o cancelar se avisa a `NOTIFICATIONS_URL` en segundo plano. Si el servicio falla o tarda más de 2 s, el error queda en el log y la reserva se mantiene ([ADR 0004](docs/adr/0004-notificaciones-y-traslapes.md)). En desarrollo se pueden ver con `docker compose logs notifications`.
+
+```bash
+API=http://localhost:3000/api/v1
+
+# Reservar (DOCENTE o ADMIN)
+curl -X POST $API/reservations -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d '{"spaceId":"<id>","startsAt":"2026-11-04T09:00:00-06:00","endsAt":"2026-11-04T11:00:00-06:00"}'
+
+# Mis reservas
+curl $API/reservations/me -H "Authorization: Bearer $ACCESS"
+
+# Cancelar
+curl -X DELETE $API/reservations/<id> -H "Authorization: Bearer $ACCESS"
+```
