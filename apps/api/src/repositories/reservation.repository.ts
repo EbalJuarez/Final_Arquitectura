@@ -6,6 +6,10 @@ export interface ReservationInterval {
   endsAt: Date;
 }
 
+export interface SpaceReservationInterval extends ReservationInterval {
+  spaceId: string;
+}
+
 export interface CreateReservationData {
   spaceId: string;
   userId: string;
@@ -61,6 +65,15 @@ export function findConfirmedReservationsInRange(
   return prisma.reservation.findMany({
     where: { spaceId, status: 'CONFIRMED', startsAt: { lt: to }, endsAt: { gt: from } },
     select: { startsAt: true, endsAt: true },
+    orderBy: { startsAt: 'asc' },
+  });
+}
+
+// Reservas CONFIRMED de todos los espacios que se traslapan con [from, to), ordenadas por inicio.
+export function findConfirmedReservationsOfAllSpaces(from: Date, to: Date): Promise<SpaceReservationInterval[]> {
+  return prisma.reservation.findMany({
+    where: { status: 'CONFIRMED', startsAt: { lt: to }, endsAt: { gt: from } },
+    select: { spaceId: true, startsAt: true, endsAt: true },
     orderBy: { startsAt: 'asc' },
   });
 }

@@ -170,6 +170,33 @@ export type ApiKey = z.infer<typeof ApiKeySchema>;
 export const CreatedApiKeySchema = ApiKeySchema.extend({ key: z.string() });
 export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
 
+// ---------- Pantalla informativa (GET /now) ----------
+
+export const SpaceNowStatusSchema = z.enum(['FREE', 'OCCUPIED']);
+export type SpaceNowStatus = z.infer<typeof SpaceNowStatusSchema>;
+
+// Estado de un espacio en este momento. occupiedUntil es la hora en que se libera (null si está libre);
+// si hay reservas seguidas sin hueco, es el fin de la última. nextReservation es la siguiente reserva
+// del día que empieza después de que se libere, o null si no hay.
+export const NowSpaceSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  building: z.string(),
+  capacity: z.number().int(),
+  status: SpaceNowStatusSchema,
+  occupiedUntil: z.iso.datetime({ offset: true }).nullable(),
+  nextReservation: TimeBlockSchema.nullable(),
+});
+export type NowSpace = z.infer<typeof NowSpaceSchema>;
+
+// Respuesta de GET /now; todas las horas con el desfase de Guatemala (-06:00)
+export const NowResponseSchema = z.object({
+  now: z.iso.datetime({ offset: true }),
+  timezone: z.string(),
+  spaces: z.array(NowSpaceSchema),
+});
+export type NowResponse = z.infer<typeof NowResponseSchema>;
+
 // Formato común de los errores de la API
 export interface ErrorResponse {
   error: {
