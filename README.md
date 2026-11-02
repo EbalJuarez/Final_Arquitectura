@@ -6,16 +6,36 @@ Sistema de reserva de laboratorios y salones (Arquitectura de Sistemas I, UMES Q
 
 ## Puesta en marcha
 
-Requisitos: Node 22, pnpm 10 y Docker.
+Requisitos: Docker. Para desarrollar fuera de Docker también hacen falta Node 22 y pnpm 10.
 
 ```bash
-cp .env.example .env               # y reemplazar los valores de ejemplo
-pnpm install
-docker compose up -d               # PostgreSQL (host 5433), Redis (6379) y Mockoon (3001)
-pnpm --filter @reservalab/api db:deploy   # aplica las migraciones
-pnpm --filter @reservalab/api db:seed     # crea admin@, docente@ y estudiante@reservalab.test
-pnpm --filter @reservalab/api dev         # API en http://localhost:3000/api/v1
+cp .env.example .env                        # y reemplazar los valores de ejemplo
+docker compose up --build                   # PostgreSQL, Redis, Mockoon y la API en http://localhost:3000/api/v1
+docker compose exec api node dist/seed.js   # crea admin@, docente@ y estudiante@reservalab.test
 ```
+
+- Al arrancar, el contenedor `api` espera a que PostgreSQL y Redis estén sanos, aplica las migraciones pendientes (`prisma migrate deploy`) y luego inicia el servidor.
+- El seed no corre solo, porque crea usuarios con una contraseña conocida (`SEED_USER_PASSWORD`). Es idempotente: si los usuarios ya existen no los modifica, así que se puede repetir sin problema.
+- Dentro de Docker la API usa los hosts `postgres`, `redis` y `mockoon`. El servicio `api` reemplaza las URL de `.env`, que apuntan a `localhost`.
+- `docker compose down -v` borra también la base. La próxima vez que arranque se aplican de nuevo las migraciones, y hay que volver a correr el seed.
+
+### Desarrollo sin el contenedor de la API
+
+Para tener recarga automática, se levantan solo los servicios de apoyo y la API corre con `tsx`. Si el contenedor `api` está corriendo, ocupa el puerto 3000: hay que detenerlo antes con `docker compose stop api`.
+
+```bash
+pnpm install
+docker compose up -d postgres redis mockoon       # PostgreSQL (host 5433), Redis (6379) y Mockoon (3001)
+pnpm --filter @reservalab/api db:deploy           # aplica las migraciones
+pnpm --filter @reservalab/api db:seed             # mismo seed que en Docker
+pnpm --filter @reservalab/api dev                 # API en http://localhost:3000/api/v1
+```
+
+La imagen se define en [`apps/api/Dockerfile`](apps/api/Dockerfile) y tiene tres etapas:
+
+1. **Instalación:** instala con pnpm.
+2. **Build:** `esbuild` empaqueta la API y `@reservalab/shared` en `dist/`.
+3. **Imagen final:** solo Node 22 Alpine, el bundle, las migraciones y las dependencias de producción.
 
 ## Pruebas
 
@@ -120,7 +140,7 @@ Todas las rutas están bajo `/api/v1/reservations` y exigen access token.
 
 - **Horas:** `startsAt` y `endsAt` van en ISO 8601 con desfase (`2026-11-04T09:00:00-06:00`) o en UTC (`…Z`). La reserva debe quedar dentro de un mismo día y de la ventana de operación en hora de Guatemala.
 - **Traslapes:** dos reservas CONFIRMED del mismo espacio no pueden traslaparse. Las contiguas (una termina cuando empieza la otra) sí se permiten, y las canceladas no bloquean. Se valida en el servicio y lo garantiza una restricción EXCLUDE de PostgreSQL, también ante solicitudes simultáneas ([ADR 0004](docs/adr/0004-proteccion-de-traslapes.md)).
-- **Notificaciones:** al confirmar o cancelar se avisa a `NOTIFICATIONS_URL` en segundo plano. Si el servicio falla o tarda más de 2 s, el error queda en el log y la reserva se mantiene ([ADR 0005](docs/adr/0005-notificaciones-tolerantes-a-fallos.md)). En desarrollo se pueden ver con `docker compose logs notifications`.
+- **Notificaciones:** al confirmar o cancelar se avisa a `NOTIFICATIONS_URL` en segundo plano. Si el servicio falla o tarda más de 2 s, el error queda en el log y la reserva se mantiene ([ADR 0005](docs/adr/0005-notificaciones-tolerantes-a-fallos.md)). En desarrollo se pueden ver con `docker compose logs mockoon`.
 
 ```bash
 API=http://localhost:3000/api/v1

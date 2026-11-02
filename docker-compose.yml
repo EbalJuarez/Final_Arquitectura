@@ -30,7 +30,7 @@ services:
       retries: 10
 
   # Servicio de notificaciones simulado
-  notifications:
+  mockoon:
     image: mockoon/cli:9.9.0
     restart: unless-stopped
     command: ["--data", "/data/notifications.json", "--port", "3001", "--log-transaction"]
@@ -38,6 +38,29 @@ services:
       - "${NOTIFICATIONS_PORT:-3001}:3001"
     volumes:
       - ./packages/mocks/notifications.json:/data/notifications.json:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    # Dentro de la red de Docker los servicios se llaman por su nombre, no por localhost.
+    # Estas variables reemplazan a las de .env, que apuntan a los puertos publicados en el host.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      NOTIFICATIONS_URL: http://mockoon:3001
+      API_PORT: "3000"
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mockoon:
+        condition: service_started
 
 volumes:
   postgres-data:

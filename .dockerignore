@@ -1,0 +1,25 @@
+# Dependencias y resultados de build: se generan dentro de la imagen
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+
+# Secretos: las variables llegan por docker compose, nunca dentro de la imagen
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Nada de esto hace falta para construir
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+.claude
+docs
+**/*.md
+**/*.log
+docker-compose*.yml
+**/Dockerfile
+.dockerignore
