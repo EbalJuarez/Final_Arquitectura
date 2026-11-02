@@ -18,6 +18,8 @@ const EnvSchema = z
     NOTIFICATIONS_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
     // Solicitudes por minuto que puede hacer cada API key
     API_KEY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
+    // Duración de la caché de lecturas en Redis
+    CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   })
   .refine((env) => env.OPENING_HOUR < env.CLOSING_HOUR, {
     message: 'OPENING_HOUR debe ser menor que CLOSING_HOUR',
