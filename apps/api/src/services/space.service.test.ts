@@ -54,6 +54,13 @@ describe('listSpaces', () => {
       { id: SPACE_ID, name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 30, createdAt: '2026-11-01T12:00:00.000Z' },
     ]);
   });
+
+  it('sin filtros consulta todos los espacios', async () => {
+    spaces.listSpaces.mockResolvedValue([]);
+
+    await expect(spaceService.listSpaces({})).resolves.toEqual([]);
+    expect(spaces.listSpaces).toHaveBeenCalledWith({});
+  });
 });
 
 describe('createSpace y updateSpace', () => {

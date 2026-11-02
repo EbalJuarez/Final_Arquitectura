@@ -71,6 +71,10 @@ describe('computeFreeBlocks', () => {
     expect(computeFreeBlocks(WINDOW, [])).toEqual([WINDOW]);
   });
 
+  it('con un solo bloque ocupado deja libre lo de antes y lo de después', () => {
+    expect(computeFreeBlocks(WINDOW, [gt('10:00', '12:00')])).toEqual([gt('07:00', '10:00'), gt('12:00', '21:00')]);
+  });
+
   it('devuelve los huecos entre reservas', () => {
     expect(computeFreeBlocks(WINDOW, [gt('09:00', '11:00'), gt('14:00', '15:30')])).toEqual([
       gt('07:00', '09:00'),
