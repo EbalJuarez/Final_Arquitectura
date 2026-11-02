@@ -9,6 +9,8 @@ export default defineConfig({
       REDIS_URL: 'redis://localhost:6379',
       JWT_ACCESS_SECRET: 'secreto_solo_para_pruebas_unitarias',
       NOTIFICATIONS_URL: 'http://notificaciones.prueba',
+      // Timeout corto para que la prueba de timeout del cliente no tarde 2 s
+      NOTIFICATIONS_TIMEOUT_MS: '100',
     },
     coverage: {
       provider: 'v8',
