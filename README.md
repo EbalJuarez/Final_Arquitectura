@@ -14,6 +14,8 @@ docker compose up --build                   # PostgreSQL, Redis, Mockoon y la AP
 docker compose exec api node dist/seed.js   # crea admin@, docente@ y estudiante@reservalab.test
 ```
 
+La documentación interactiva queda en http://localhost:3000/docs (Swagger UI) y el documento OpenAPI en http://localhost:3000/docs/openapi.json. Se genera desde los esquemas Zod de `packages/shared` ([ADR 0008](docs/adr/0008-documentacion-openapi-desde-zod.md)). En Swagger UI, **Authorize** acepta un access token (`bearerAuth`) o una API key (`apiKeyAuth`).
+
 - Al arrancar, el contenedor `api` espera a que PostgreSQL y Redis estén sanos, aplica las migraciones pendientes (`prisma migrate deploy`) y luego inicia el servidor.
 - El seed no corre solo, porque crea usuarios con una contraseña conocida (`SEED_USER_PASSWORD`). Es idempotente: si los usuarios ya existen no los modifica, así que se puede repetir sin problema.
 - Dentro de Docker la API usa los hosts `postgres`, `redis` y `mockoon`. El servicio `api` reemplaza las URL de `.env`, que apuntan a `localhost`.
