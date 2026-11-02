@@ -1,11 +1,5 @@
+import type { CheckStatus, HealthResponse } from '@reservalab/shared';
 import * as healthRepository from '../repositories/health.repository';
-
-export type CheckStatus = 'ok' | 'error';
-
-export interface HealthReport {
-  status: CheckStatus;
-  checks: { database: CheckStatus; redis: CheckStatus };
-}
 
 async function check(probe: () => Promise<void>): Promise<CheckStatus> {
   try {
@@ -16,7 +10,7 @@ async function check(probe: () => Promise<void>): Promise<CheckStatus> {
   }
 }
 
-export async function getHealth(): Promise<HealthReport> {
+export async function getHealth(): Promise<HealthResponse> {
   const [database, redis] = await Promise.all([
     check(healthRepository.pingDatabase),
     check(healthRepository.pingRedis),

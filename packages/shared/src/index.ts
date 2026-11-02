@@ -197,11 +197,24 @@ export const NowResponseSchema = z.object({
 });
 export type NowResponse = z.infer<typeof NowResponseSchema>;
 
-// Formato común de los errores de la API
-export interface ErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details?: { field: string; message: string }[];
-  };
-}
+// ---------- Salud y errores ----------
+
+export const CheckStatusSchema = z.enum(['ok', 'error']);
+export type CheckStatus = z.infer<typeof CheckStatusSchema>;
+
+// Respuesta de GET /health: 200 si todo responde, 503 si falla la base o Redis
+export const HealthResponseSchema = z.object({
+  status: CheckStatusSchema,
+  checks: z.object({ database: CheckStatusSchema, redis: CheckStatusSchema }),
+});
+export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+
+// Formato común de los errores de la API. details solo aparece en VALIDATION_ERROR (un elemento por campo).
+export const ErrorResponseSchema = z.object({
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.array(z.object({ field: z.string(), message: z.string() })).optional(),
+  }),
+});
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
