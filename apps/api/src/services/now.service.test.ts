@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeCache } from '../../test/fake-cache';
 import * as reservationRepository from '../repositories/reservation.repository';
 import type { SpaceReservationInterval } from '../repositories/reservation.repository';
 import * as spaceRepository from '../repositories/space.repository';
@@ -8,6 +9,8 @@ import { buildNowResponse, computeSpaceStatus, getBusinessDay, getNow } from './
 // Repositorios mockeados: estas pruebas no tocan la base de datos.
 vi.mock('../repositories/space.repository', () => ({ listSpaces: vi.fn() }));
 vi.mock('../repositories/reservation.repository', () => ({ findConfirmedReservationsOfAllSpaces: vi.fn() }));
+// Caché en memoria
+vi.mock('../lib/cache', async () => (await import('../../test/fake-cache')).fakeCacheModule);
 
 const spaces = vi.mocked(spaceRepository);
 const reservations = vi.mocked(reservationRepository);
@@ -31,6 +34,7 @@ function makeSpace(id: string, name: string): SpaceRecord {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fakeCache.reset();
 });
 
 describe('getBusinessDay', () => {
@@ -176,6 +180,18 @@ describe('getNow', () => {
       now,
       new Date('2026-11-11T06:00:00Z'),
     );
-    expect(response.now).toBe('2026-11-10T21:30:00-06:00');
+    expect(response).toMatchObject({ cache: 'MISS', data: { now: '2026-11-10T21:30:00-06:00' } });
+  });
+
+  it('se cachea en una sola clave: la segunda consulta es HIT', async () => {
+    spaces.listSpaces.mockResolvedValue([makeSpace(SPACE_A, 'A')]);
+    reservations.findConfirmedReservationsOfAllSpaces.mockResolvedValue([]);
+
+    const first = await getNow(at('10:00'));
+    const second = await getNow(at('10:00'));
+
+    expect(second).toEqual({ data: first.data, cache: 'HIT' });
+    expect([...fakeCache.store.keys()]).toEqual(['now']);
+    expect(spaces.listSpaces).toHaveBeenCalledOnce();
   });
 });

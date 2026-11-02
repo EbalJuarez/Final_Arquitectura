@@ -12,7 +12,8 @@ import * as spaceService from '../services/space.service';
 // body, query y params ya vienen validados por el middleware validate() de cada ruta.
 
 export async function list(req: Request, res: Response): Promise<void> {
-  res.json(await spaceService.listSpaces(req.query as SpaceFilters));
+  const { data, cache } = await spaceService.listSpaces(req.query as SpaceFilters);
+  res.set('X-Cache', cache).json(data);
 }
 
 export async function create(req: Request, res: Response): Promise<void> {
@@ -33,5 +34,6 @@ export async function remove(req: Request, res: Response): Promise<void> {
 export async function availability(req: Request, res: Response): Promise<void> {
   const { id } = req.params as IdParams;
   const { date } = req.query as AvailabilityQuery;
-  res.json(await availabilityService.getAvailability(id, date));
+  const { data, cache } = await availabilityService.getAvailability(id, date);
+  res.set('X-Cache', cache).json(data);
 }

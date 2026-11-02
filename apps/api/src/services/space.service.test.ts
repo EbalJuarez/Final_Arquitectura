@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeCache } from '../../test/fake-cache';
 import { AppError } from '../errors/app-error';
 import * as spaceRepository from '../repositories/space.repository';
 import type { SpaceRecord } from '../repositories/space.repository';
@@ -13,6 +14,9 @@ vi.mock('../repositories/space.repository', () => ({
   hasActiveConfirmedReservations: vi.fn(),
   deleteSpace: vi.fn(),
 }));
+
+// Caché en memoria
+vi.mock('../lib/cache', async () => (await import('../../test/fake-cache')).fakeCacheModule);
 
 const spaces = vi.mocked(spaceRepository);
 
@@ -41,6 +45,7 @@ async function expectAppError(promise: Promise<unknown>, statusCode: number, cod
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fakeCache.reset();
 });
 
 describe('listSpaces', () => {
@@ -50,16 +55,68 @@ describe('listSpaces', () => {
     const result = await spaceService.listSpaces({ building: 'Edificio A', minCapacity: 20 });
 
     expect(spaces.listSpaces).toHaveBeenCalledWith({ building: 'Edificio A', minCapacity: 20 });
-    expect(result).toEqual([
-      { id: SPACE_ID, name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 30, createdAt: '2026-11-01T12:00:00.000Z' },
-    ]);
+    expect(result).toEqual({
+      data: [
+        { id: SPACE_ID, name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 30, createdAt: '2026-11-01T12:00:00.000Z' },
+      ],
+      cache: 'MISS',
+    });
   });
 
   it('sin filtros consulta todos los espacios', async () => {
     spaces.listSpaces.mockResolvedValue([]);
 
-    await expect(spaceService.listSpaces({})).resolves.toEqual([]);
+    await expect(spaceService.listSpaces({})).resolves.toEqual({ data: [], cache: 'MISS' });
     expect(spaces.listSpaces).toHaveBeenCalledWith({});
+  });
+
+  describe('caché', () => {
+    beforeEach(() => {
+      spaces.listSpaces.mockResolvedValue([makeSpace()]);
+    });
+
+    it('la segunda consulta con los mismos filtros es HIT y no vuelve a la base', async () => {
+      const first = await spaceService.listSpaces({ building: 'Edificio A' });
+      const second = await spaceService.listSpaces({ building: 'Edificio A' });
+
+      expect(first.cache).toBe('MISS');
+      expect(second).toEqual({ data: first.data, cache: 'HIT' });
+      expect(spaces.listSpaces).toHaveBeenCalledOnce();
+    });
+
+    it('la clave lleva la versión del listado y los filtros', async () => {
+      fakeCache.versions.set('spaces', 3);
+
+      await spaceService.listSpaces({ building: 'Edificio A', minCapacity: 20 });
+      await spaceService.listSpaces({});
+
+      expect([...fakeCache.store.keys()]).toEqual([
+        'spaces:v3:building=Edificio%20A:minCapacity=20',
+        'spaces:v3:building=*:minCapacity=*',
+      ]);
+    });
+
+    it('filtros distintos no comparten respuesta', async () => {
+      await spaceService.listSpaces({ building: 'Edificio A' });
+      const other = await spaceService.listSpaces({ building: 'Edificio B' });
+
+      expect(other.cache).toBe('MISS');
+      expect(spaces.listSpaces).toHaveBeenCalledTimes(2);
+    });
+
+    it('al subir la versión la consulta siguiente es MISS', async () => {
+      await spaceService.listSpaces({});
+      fakeCache.versions.set('spaces', 1);
+
+      await expect(spaceService.listSpaces({})).resolves.toMatchObject({ cache: 'MISS' });
+    });
+
+    it('con Redis caído (sin versión) consulta la base sin tocar la caché', async () => {
+      fakeCache.goDown();
+
+      await expect(spaceService.listSpaces({})).resolves.toMatchObject({ cache: 'MISS' });
+      expect(spaces.listSpaces).toHaveBeenCalledOnce();
+    });
   });
 });
 

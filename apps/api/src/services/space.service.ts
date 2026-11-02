@@ -1,7 +1,10 @@
 import type { CreateSpaceInput, Space, SpaceFilters, UpdateSpaceInput } from '@reservalab/shared';
 import { AppError } from '../errors/app-error';
+import * as cache from '../lib/cache';
+import type { CacheResult } from '../lib/cache';
 import * as spaceRepository from '../repositories/space.repository';
 import type { SpaceRecord } from '../repositories/space.repository';
+import { SPACES_NAMESPACE, spacesListKey } from './cache-keys';
 
 const spaceNotFound = () => new AppError(404, 'SPACE_NOT_FOUND', 'El espacio no existe');
 const spaceHasReservations = () =>
@@ -17,10 +20,17 @@ export function toSpace(space: SpaceRecord): Space {
   };
 }
 
-// RF-05
-export async function listSpaces(filters: SpaceFilters): Promise<Space[]> {
-  const spaces = await spaceRepository.listSpaces(filters);
-  return spaces.map(toSpace);
+// RF-05. La clave lleva la versión del listado: al crear, editar o borrar un espacio se incrementa y
+// todas las combinaciones de filtros quedan invalidadas a la vez.
+export async function listSpaces(filters: SpaceFilters): Promise<CacheResult<Space[]>> {
+  const load = async () => (await spaceRepository.listSpaces(filters)).map(toSpace);
+
+  const version = await cache.getVersion(SPACES_NAMESPACE);
+  if (version === null) {
+    // Redis no respondió: sin versión no hay clave segura, así que se consulta la base directamente.
+    return { data: await load(), cache: 'MISS' };
+  }
+  return cache.remember(spacesListKey(version, filters), load);
 }
 
 // Lanza 404 si no existe; lo usan otras operaciones que dependen del espacio.

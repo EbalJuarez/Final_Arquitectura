@@ -1,10 +1,13 @@
 import type { NowResponse, NowSpace } from '@reservalab/shared';
 import { BUSINESS_TIMEZONE, BUSINESS_UTC_OFFSET_MINUTES } from '../config/schedule';
+import * as cache from '../lib/cache';
+import type { CacheResult } from '../lib/cache';
 import * as reservationRepository from '../repositories/reservation.repository';
 import type { SpaceReservationInterval } from '../repositories/reservation.repository';
 import * as spaceRepository from '../repositories/space.repository';
 import type { SpaceRecord } from '../repositories/space.repository';
 import { getDayWindow, toOffsetIso, type Interval } from './availability.service';
+import { NOW_KEY } from './cache-keys';
 
 // Día completo (00:00 a 24:00) en hora de Guatemala que contiene el instante now.
 // Ejemplo: 2026-11-10T03:00Z es todavía el 9 de noviembre en Guatemala (21:00).
@@ -73,8 +76,13 @@ export function buildNowResponse(
   };
 }
 
-// Pantalla informativa: estado de todos los espacios con el reloj del servidor.
-export async function getNow(now = new Date()): Promise<NowResponse> {
+// Pantalla informativa: estado de todos los espacios con el reloj del servidor. Se cachea en una sola
+// clave, así que la respuesta (incluido "now") puede tener hasta CACHE_TTL_SECONDS de antigüedad.
+export async function getNow(now = new Date()): Promise<CacheResult<NowResponse>> {
+  return cache.remember(NOW_KEY, () => loadNow(now));
+}
+
+async function loadNow(now: Date): Promise<NowResponse> {
   const day = getBusinessDay(now);
   // Solo hacen falta las reservas que siguen activas o empiezan más tarde hoy.
   const [spaces, reservations] = await Promise.all([

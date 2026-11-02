@@ -5,7 +5,10 @@ import {
   CLOSING_HOUR,
   OPENING_HOUR,
 } from '../config/schedule';
+import * as cache from '../lib/cache';
+import type { CacheResult } from '../lib/cache';
 import * as reservationRepository from '../repositories/reservation.repository';
+import { availabilityGroup, availabilityKey } from './cache-keys';
 import { getSpaceRecord } from './space.service';
 
 export interface Interval {
@@ -77,8 +80,15 @@ function toTimeBlock(interval: Interval): TimeBlock {
   };
 }
 
-// RF-07: bloques ocupados y libres de un espacio en un día.
-export async function getAvailability(spaceId: string, date: string): Promise<AvailabilityResponse> {
+// RF-07: bloques ocupados y libres de un espacio en un día. Se cachea por espacio y fecha; si el
+// espacio no existe lanza 404 antes de guardar, así que los errores no quedan en caché.
+export async function getAvailability(spaceId: string, date: string): Promise<CacheResult<AvailabilityResponse>> {
+  return cache.remember(availabilityKey(spaceId, date), () => loadAvailability(spaceId, date), {
+    group: availabilityGroup(spaceId),
+  });
+}
+
+async function loadAvailability(spaceId: string, date: string): Promise<AvailabilityResponse> {
   await getSpaceRecord(spaceId);
 
   const window = getDayWindow(date, OPENING_HOUR, CLOSING_HOUR, BUSINESS_UTC_OFFSET_MINUTES);

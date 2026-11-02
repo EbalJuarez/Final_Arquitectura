@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeCache } from '../../test/fake-cache';
 import { AppError } from '../errors/app-error';
 import * as reservationRepository from '../repositories/reservation.repository';
 import * as spaceRepository from '../repositories/space.repository';
@@ -14,6 +15,8 @@ import {
 // Repositorios mockeados: estas pruebas no tocan la base de datos.
 vi.mock('../repositories/space.repository', () => ({ findSpaceById: vi.fn() }));
 vi.mock('../repositories/reservation.repository', () => ({ findConfirmedReservationsInRange: vi.fn() }));
+// Caché en memoria
+vi.mock('../lib/cache', async () => (await import('../../test/fake-cache')).fakeCacheModule);
 
 const spaces = vi.mocked(spaceRepository);
 const reservations = vi.mocked(reservationRepository);
@@ -132,6 +135,12 @@ describe('toOffsetIso', () => {
 
 describe('getAvailability', () => {
   const SPACE_ID = '44444444-4444-4444-8444-444444444444';
+  const space = { id: SPACE_ID, name: 'Laboratorio', building: 'A', capacity: 30, createdAt: new Date() };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fakeCache.reset();
+  });
 
   it('consulta la ventana del día en Guatemala y arma ocupados y libres', async () => {
     spaces.findSpaceById.mockResolvedValue({
@@ -149,7 +158,8 @@ describe('getAvailability', () => {
     const result = await getAvailability(SPACE_ID, '2026-11-03');
 
     expect(reservations.findConfirmedReservationsInRange).toHaveBeenCalledWith(SPACE_ID, WINDOW.start, WINDOW.end);
-    expect(result).toEqual({
+    expect(result.cache).toBe('MISS');
+    expect(result.data).toEqual({
       spaceId: SPACE_ID,
       date: '2026-11-03',
       timezone: 'America/Guatemala',
@@ -165,7 +175,7 @@ describe('getAvailability', () => {
     });
   });
 
-  it('responde 404 si el espacio no existe, sin consultar reservas', async () => {
+  it('responde 404 si el espacio no existe, sin consultar reservas ni guardar en caché', async () => {
     spaces.findSpaceById.mockResolvedValue(null);
 
     const error = await getAvailability(SPACE_ID, '2026-11-03').catch((e: unknown) => e);
@@ -173,5 +183,49 @@ describe('getAvailability', () => {
     expect(error).toBeInstanceOf(AppError);
     expect(error).toMatchObject({ statusCode: 404, code: 'SPACE_NOT_FOUND' });
     expect(reservations.findConfirmedReservationsInRange).not.toHaveBeenCalled();
+    expect(fakeCache.store.size).toBe(0);
+  });
+
+  describe('caché', () => {
+    beforeEach(() => {
+      spaces.findSpaceById.mockResolvedValue(space);
+      reservations.findConfirmedReservationsInRange.mockResolvedValue([]);
+    });
+
+    it('la segunda consulta es HIT y no vuelve a la base', async () => {
+      const first = await getAvailability(SPACE_ID, '2026-11-03');
+      const second = await getAvailability(SPACE_ID, '2026-11-03');
+
+      expect(first.cache).toBe('MISS');
+      expect(second).toEqual({ data: first.data, cache: 'HIT' });
+      expect(reservations.findConfirmedReservationsInRange).toHaveBeenCalledOnce();
+    });
+
+    it('usa la clave availability:{spaceId}:{fecha} y la anota en el grupo del espacio', async () => {
+      await getAvailability(SPACE_ID, '2026-11-03');
+
+      expect([...fakeCache.store.keys()]).toEqual([`availability:${SPACE_ID}:2026-11-03`]);
+      expect([...fakeCache.groups.get(`availability-keys:${SPACE_ID}`)!]).toEqual([
+        `availability:${SPACE_ID}:2026-11-03`,
+      ]);
+    });
+
+    it('otra fecha es otra clave', async () => {
+      await getAvailability(SPACE_ID, '2026-11-03');
+      const otherDay = await getAvailability(SPACE_ID, '2026-11-04');
+
+      expect(otherDay.cache).toBe('MISS');
+      expect(fakeCache.store.size).toBe(2);
+    });
+
+    it('con Redis caído siempre es MISS y responde desde la base', async () => {
+      fakeCache.goDown();
+
+      const first = await getAvailability(SPACE_ID, '2026-11-03');
+      const second = await getAvailability(SPACE_ID, '2026-11-03');
+
+      expect([first.cache, second.cache]).toEqual(['MISS', 'MISS']);
+      expect(reservations.findConfirmedReservationsInRange).toHaveBeenCalledTimes(2);
+    });
   });
 });
