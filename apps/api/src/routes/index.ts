@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { apiKeyRouter } from './api-key.routes';
 import { authRouter } from './auth.routes';
 import { healthRouter } from './health.routes';
 import { reservationRouter } from './reservation.routes';
@@ -11,3 +12,4 @@ apiV1Router.use('/health', healthRouter);
 apiV1Router.use('/auth', authRouter);
 apiV1Router.use('/spaces', spaceRouter);
 apiV1Router.use('/reservations', reservationRouter);
+apiV1Router.use('/api-keys', apiKeyRouter);

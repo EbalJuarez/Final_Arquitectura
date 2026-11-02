@@ -138,6 +138,38 @@ export const ReservationSchema = z.object({
 });
 export type Reservation = z.infer<typeof ReservationSchema>;
 
+// ---------- API keys ----------
+
+// Permisos que puede tener una API key de un sistema externo
+export const ApiKeyPermissionSchema = z.enum(['read:spaces', 'read:now']);
+export type ApiKeyPermission = z.infer<typeof ApiKeyPermissionSchema>;
+
+// Datos para crear una API key; los permisos repetidos se ignoran
+export const CreateApiKeySchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  permissions: z
+    .array(ApiKeyPermissionSchema)
+    .min(1, 'Debe incluir al menos un permiso')
+    .transform((permissions) => [...new Set(permissions)]),
+});
+export type CreateApiKeyInput = z.infer<typeof CreateApiKeySchema>;
+
+// API key tal como la lista la API: nunca incluye la key ni su hash
+export const ApiKeySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  prefix: z.string(),
+  permissions: z.array(ApiKeyPermissionSchema),
+  lastUsedAt: z.iso.datetime().nullable(),
+  revokedAt: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type ApiKey = z.infer<typeof ApiKeySchema>;
+
+// Respuesta de creación: la única vez que se devuelve la key completa
+export const CreatedApiKeySchema = ApiKeySchema.extend({ key: z.string() });
+export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
+
 // Formato común de los errores de la API
 export interface ErrorResponse {
   error: {
