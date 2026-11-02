@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type * as RealCache from '../src/lib/cache';
-import type { CacheResult } from '../src/lib/cache';
+import type { CacheResult, RememberOptions } from '../src/lib/cache';
 
 // Caché falsa en memoria con la misma interfaz que src/lib/cache.ts, para las pruebas unitarias de los
 // servicios. Uso:
@@ -10,6 +10,8 @@ import type { CacheResult } from '../src/lib/cache';
 const store = new Map<string, unknown>();
 const groups = new Map<string, Set<string>>();
 const versions = new Map<string, number>();
+// TTL con el que remember guardó cada clave (undefined = el de CACHE_TTL_SECONDS)
+const ttls = new Map<string, number | undefined>();
 
 // Si es true, todas las operaciones se comportan como con Redis caído (MISS, sin guardar, versión null).
 let down = false;
@@ -27,14 +29,16 @@ async function set(key: string, value: unknown, _ttlSeconds?: number, group?: st
 async function remember<T>(
   key: string,
   load: () => Promise<T>,
-  options: { ttlSeconds?: number; group?: string } = {},
+  options: RememberOptions<T> = {},
 ): Promise<CacheResult<T>> {
   const cached = await get<T>(key);
   if (cached !== null) {
     return { data: cached, cache: 'HIT' };
   }
   const data = await load();
-  await set(key, data, options.ttlSeconds, options.group);
+  const ttlSeconds = typeof options.ttlSeconds === 'function' ? options.ttlSeconds(data) : options.ttlSeconds;
+  ttls.set(key, ttlSeconds);
+  await set(key, data, ttlSeconds, options.group);
   return { data, cache: 'MISS' };
 }
 
@@ -70,10 +74,12 @@ export const fakeCache = {
   store,
   groups,
   versions,
+  ttls,
   reset(): void {
     store.clear();
     groups.clear();
     versions.clear();
+    ttls.clear();
     down = false;
   },
   // Simula Redis caído hasta el siguiente reset()

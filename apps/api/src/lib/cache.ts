@@ -85,18 +85,25 @@ export async function incrementVersion(namespace: string): Promise<void> {
   await attempt(`INCR versión ${namespace}`, () => redis.incr(`version:${namespace}`));
 }
 
+export interface RememberOptions<T> {
+  // Segundos, o una función que los calcula a partir del dato (por ejemplo, hasta su próximo cambio)
+  ttlSeconds?: number | ((data: T) => number);
+  group?: string;
+}
+
 // Devuelve el valor guardado (HIT) o lo calcula con load y lo guarda (MISS). Si load lanza, no se
 // guarda nada: los errores (404, 400) nunca quedan en caché.
 export async function remember<T>(
   key: string,
   load: () => Promise<T>,
-  options: { ttlSeconds?: number; group?: string } = {},
+  options: RememberOptions<T> = {},
 ): Promise<CacheResult<T>> {
   const cached = await get<T>(key);
   if (cached !== null) {
     return { data: cached, cache: 'HIT' };
   }
   const data = await load();
-  await set(key, data, options.ttlSeconds, options.group);
+  const ttlSeconds = typeof options.ttlSeconds === 'function' ? options.ttlSeconds(data) : options.ttlSeconds;
+  await set(key, data, ttlSeconds, options.group);
   return { data, cache: 'MISS' };
 }

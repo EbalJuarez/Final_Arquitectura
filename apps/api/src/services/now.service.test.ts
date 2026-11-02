@@ -4,7 +4,7 @@ import * as reservationRepository from '../repositories/reservation.repository';
 import type { SpaceReservationInterval } from '../repositories/reservation.repository';
 import * as spaceRepository from '../repositories/space.repository';
 import type { SpaceRecord } from '../repositories/space.repository';
-import { buildNowResponse, computeSpaceStatus, getBusinessDay, getNow } from './now.service';
+import { buildNowResponse, computeSpaceStatus, getBusinessDay, getNow, secondsUntilNextChange } from './now.service';
 
 // Repositorios mockeados: estas pruebas no tocan la base de datos.
 vi.mock('../repositories/space.repository', () => ({ listSpaces: vi.fn() }));
@@ -167,6 +167,54 @@ describe('buildNowResponse', () => {
   });
 });
 
+describe('secondsUntilNextChange', () => {
+  const reservationsOf = (spaceId: string, start: string, end: string): SpaceReservationInterval => ({
+    spaceId,
+    startsAt: at(start),
+    endsAt: at(end),
+  });
+  const ttlAt = (now: string, list: SpaceReservationInterval[]) =>
+    secondsUntilNextChange(
+      buildNowResponse([makeSpace(SPACE_A, 'A'), makeSpace(SPACE_B, 'B')], list, at(now)),
+      at(now),
+      60,
+    );
+
+  it('sin cambios próximos usa el máximo', () => {
+    expect(ttlAt('10:00', [])).toBe(60);
+  });
+
+  it('vence cuando se libera un espacio ocupado', () => {
+    // A se libera a las 10:00 y son las 9:59:20 → 40 s
+    const now = new Date(at('10:00').getTime() - 40_000);
+    const response = buildNowResponse([makeSpace(SPACE_A, 'A')], [reservationsOf(SPACE_A, '09:00', '10:00')], now);
+
+    expect(secondsUntilNextChange(response, now, 60)).toBe(40);
+  });
+
+  it('vence cuando empieza la siguiente reserva de cualquier espacio', () => {
+    const now = new Date(at('10:00').getTime() - 15_000);
+    const response = buildNowResponse(
+      [makeSpace(SPACE_A, 'A'), makeSpace(SPACE_B, 'B')],
+      [reservationsOf(SPACE_A, '11:00', '12:00'), reservationsOf(SPACE_B, '10:00', '10:30')],
+      now,
+    );
+
+    expect(secondsUntilNextChange(response, now, 60)).toBe(15);
+  });
+
+  it('los cambios a más de un minuto no alargan el TTL', () => {
+    expect(ttlAt('10:00', [reservationsOf(SPACE_A, '09:00', '11:00')])).toBe(60);
+  });
+
+  it('nunca es menor que 1 segundo', () => {
+    const now = new Date(at('10:00').getTime() - 200);
+    const response = buildNowResponse([makeSpace(SPACE_A, 'A')], [reservationsOf(SPACE_A, '10:00', '11:00')], now);
+
+    expect(secondsUntilNextChange(response, now, 60)).toBe(1);
+  });
+});
+
 describe('getNow', () => {
   it('pide las reservas desde ahora hasta el fin del día en Guatemala', async () => {
     spaces.listSpaces.mockResolvedValue([makeSpace(SPACE_A, 'A')]);
@@ -193,5 +241,17 @@ describe('getNow', () => {
     expect(second).toEqual({ data: first.data, cache: 'HIT' });
     expect([...fakeCache.store.keys()]).toEqual(['now']);
     expect(spaces.listSpaces).toHaveBeenCalledOnce();
+  });
+
+  it('guarda /now hasta el próximo cambio de estado', async () => {
+    spaces.listSpaces.mockResolvedValue([makeSpace(SPACE_A, 'A')]);
+    // La reserva en curso termina a las 10:00; la consulta es a las 9:59:30
+    reservations.findConfirmedReservationsOfAllSpaces.mockResolvedValue([
+      { spaceId: SPACE_A, startsAt: at('09:00'), endsAt: at('10:00') },
+    ]);
+
+    await getNow(new Date(at('10:00').getTime() - 30_000));
+
+    expect(fakeCache.ttls.get('now')).toBe(30);
   });
 });

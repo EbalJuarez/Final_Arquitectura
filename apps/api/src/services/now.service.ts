@@ -1,4 +1,5 @@
 import type { NowResponse, NowSpace } from '@reservalab/shared';
+import { env } from '../config/env';
 import { BUSINESS_TIMEZONE, BUSINESS_UTC_OFFSET_MINUTES } from '../config/schedule';
 import * as cache from '../lib/cache';
 import type { CacheResult } from '../lib/cache';
@@ -76,10 +77,25 @@ export function buildNowResponse(
   };
 }
 
+// Segundos hasta el próximo cambio de estado de algún espacio (se libera uno ocupado o empieza la
+// siguiente reserva), con maxSeconds como tope y 1 como mínimo. Así la caché de /now vence justo
+// cuando la pantalla tendría que cambiar, en lugar de mostrar un estado viejo hasta el TTL completo.
+export function secondsUntilNextChange(response: NowResponse, now: Date, maxSeconds: number): number {
+  const changes = response.spaces
+    .flatMap((space) => [space.occupiedUntil, space.nextReservation?.startsAt])
+    .filter((time): time is string => time !== null && time !== undefined)
+    .map((time) => new Date(time).getTime() - now.getTime());
+  const untilNextChange = Math.min(maxSeconds * 1000, ...changes);
+  return Math.max(1, Math.ceil(untilNextChange / 1000));
+}
+
 // Pantalla informativa: estado de todos los espacios con el reloj del servidor. Se cachea en una sola
-// clave, así que la respuesta (incluido "now") puede tener hasta CACHE_TTL_SECONDS de antigüedad.
+// clave hasta el próximo cambio de estado, con CACHE_TTL_SECONDS como máximo; "now" indica cuándo se
+// calculó la respuesta.
 export async function getNow(now = new Date()): Promise<CacheResult<NowResponse>> {
-  return cache.remember(NOW_KEY, () => loadNow(now));
+  return cache.remember(NOW_KEY, () => loadNow(now), {
+    ttlSeconds: (response) => secondsUntilNextChange(response, now, env.CACHE_TTL_SECONDS),
+  });
 }
 
 async function loadNow(now: Date): Promise<NowResponse> {

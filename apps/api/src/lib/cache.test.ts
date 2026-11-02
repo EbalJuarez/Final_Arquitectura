@@ -170,6 +170,12 @@ describe('remember', () => {
     expect(fake.store.has('clave')).toBe(false);
   });
 
+  it('el TTL puede calcularse a partir del dato', async () => {
+    await cache.remember('clave', async () => ({ venceEn: 7 }), { ttlSeconds: (data) => data.venceEn });
+
+    expect(fake.ttls.get('clave')).toBe(7);
+  });
+
   it('pasa el TTL y el grupo a set', async () => {
     await cache.remember('clave', async () => 1, { ttlSeconds: 15, group: 'grupo' });
 
