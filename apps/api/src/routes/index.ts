@@ -6,12 +6,20 @@ import { nowRouter } from './now.routes';
 import { reservationRouter } from './reservation.routes';
 import { spaceRouter } from './space.routes';
 
+// Routers de la versión 1 con su prefijo. La prueba de la documentación los recorre para comprobar
+// que cada ruta aparece en OpenAPI.
+export const apiV1Routers: [prefix: string, router: Router][] = [
+  ['/health', healthRouter],
+  ['/auth', authRouter],
+  ['/spaces', spaceRouter],
+  ['/reservations', reservationRouter],
+  ['/api-keys', apiKeyRouter],
+  ['/now', nowRouter],
+];
+
 // Todas las rutas de la versión 1 de la API.
 export const apiV1Router = Router();
 
-apiV1Router.use('/health', healthRouter);
-apiV1Router.use('/auth', authRouter);
-apiV1Router.use('/spaces', spaceRouter);
-apiV1Router.use('/reservations', reservationRouter);
-apiV1Router.use('/api-keys', apiKeyRouter);
-apiV1Router.use('/now', nowRouter);
+for (const [prefix, router] of apiV1Routers) {
+  apiV1Router.use(prefix, router);
+}
