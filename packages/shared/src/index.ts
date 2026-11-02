@@ -51,6 +51,68 @@ export const RefreshResponseSchema = z.object({
 });
 export type RefreshResponse = z.infer<typeof RefreshResponseSchema>;
 
+// Parámetro :id de las rutas (todos los ids son UUID)
+export const IdParamsSchema = z.object({
+  id: z.uuid(),
+});
+export type IdParams = z.infer<typeof IdParamsSchema>;
+
+// Datos para crear un espacio (laboratorio o salón)
+export const CreateSpaceSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  building: z.string().trim().min(1).max(100),
+  capacity: z.number().int().positive().max(1000),
+});
+export type CreateSpaceInput = z.infer<typeof CreateSpaceSchema>;
+
+// Edición parcial de un espacio: al menos un campo
+export const UpdateSpaceSchema = CreateSpaceSchema.partial().refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'Debe enviar al menos un campo para actualizar' },
+);
+export type UpdateSpaceInput = z.infer<typeof UpdateSpaceSchema>;
+
+// Filtros de GET /spaces (llegan como query string, por eso se convierte minCapacity)
+export const SpaceFiltersSchema = z.object({
+  building: z.string().trim().min(1).optional(),
+  minCapacity: z.coerce.number().int().positive().optional(),
+});
+export type SpaceFilters = z.infer<typeof SpaceFiltersSchema>;
+
+// Espacio tal como lo devuelve la API
+export const SpaceSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  building: z.string(),
+  capacity: z.number().int(),
+  createdAt: z.iso.datetime(),
+});
+export type Space = z.infer<typeof SpaceSchema>;
+
+// Query de GET /spaces/:id/availability: un día en formato YYYY-MM-DD (hora de Guatemala)
+export const AvailabilityQuerySchema = z.object({
+  date: z.iso.date(),
+});
+export type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
+
+// Bloque de tiempo; las horas van en ISO 8601 con el desfase de Guatemala (-06:00)
+export const TimeBlockSchema = z.object({
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+});
+export type TimeBlock = z.infer<typeof TimeBlockSchema>;
+
+// Respuesta de GET /spaces/:id/availability
+export const AvailabilityResponseSchema = z.object({
+  spaceId: z.uuid(),
+  date: z.iso.date(),
+  timezone: z.string(),
+  window: TimeBlockSchema,
+  occupied: z.array(TimeBlockSchema),
+  free: z.array(TimeBlockSchema),
+});
+export type AvailabilityResponse = z.infer<typeof AvailabilityResponseSchema>;
+
 // Formato común de los errores de la API
 export interface ErrorResponse {
   error: {
