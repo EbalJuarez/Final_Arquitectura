@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/server.ts",
-    "build": "esbuild src/server.ts prisma/seed.ts --bundle --platform=node --format=esm --target=node22 --sourcemap --entry-names=[name] --outdir=dist --external:@node-rs/argon2 --external:@prisma/client --external:express --external:jsonwebtoken --external:redis --external:zod",
+    "build": "esbuild src/server.ts prisma/seed.ts --bundle --platform=node --format=esm --target=node22 --sourcemap --entry-names=[name] --outdir=dist --external:@asteasolutions/zod-to-openapi --external:@node-rs/argon2 --external:@prisma/client --external:express --external:jsonwebtoken --external:redis --external:swagger-ui-express --external:zod",
     "start": "node --enable-source-maps dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
@@ -19,6 +19,7 @@
     "db:seed": "pnpm prisma db seed"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "9.1.0",
     "@node-rs/argon2": "2.2.2",
     "@prisma/client": "6.19.3",
     "@reservalab/shared": "workspace:*",
@@ -26,12 +27,15 @@
     "jsonwebtoken": "9.0.3",
     "prisma": "6.19.3",
     "redis": "5.12.1",
+    "swagger-ui-express": "5.0.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
     "@types/express": "5.0.6",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "22.20.5",
+    "@types/swagger-ui-express": "4.1.8",
     "@vitest/coverage-v8": "5.0.5",
     "esbuild": "0.28.2",
     "tsx": "4.23.15",

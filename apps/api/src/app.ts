@@ -1,4 +1,5 @@
 import express from 'express';
+import { docsRouter } from './docs/docs.router';
 import { errorHandler, notFoundHandler } from './middleware/errors';
 import { apiV1Router } from './routes';
 
@@ -7,6 +8,7 @@ export function createApp() {
 
   app.use(express.json());
   app.use('/api/v1', apiV1Router);
+  app.use('/docs', docsRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
