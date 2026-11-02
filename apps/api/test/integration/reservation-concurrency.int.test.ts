@@ -1,12 +1,8 @@
-import { randomUUID } from 'node:crypto';
-import type { Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createApp } from '../../src/app';
 import { prisma } from '../../src/lib/prisma';
-import { signAccessToken } from '../../src/lib/tokens';
 import { createReservation } from '../../src/repositories/reservation.repository';
 import { toOffsetIso } from '../../src/services/availability.service';
+import { createTestUser, newRunId, startTestServer, type TestServer } from './helpers';
 
 // Integración contra PostgreSQL real: se prueba la carrera entre solicitudes, que solo la
 // restricción EXCLUDE puede resolver. Las notificaciones se mockean para no depender de Mockoon.
@@ -15,13 +11,12 @@ vi.mock('../../src/clients/notifications.client', () => ({
   notifyReservationCancelled: vi.fn().mockResolvedValue(undefined),
 }));
 
-const RUN_ID = randomUUID().slice(0, 8);
+const RUN_ID = newRunId();
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Un día futuro en hora de Guatemala, para que las reservas no queden en el pasado
 const DATE = toOffsetIso(new Date(Date.now() + 30 * DAY_MS), -360).slice(0, 10);
 
-let server: Server;
-let baseUrl: string;
+let server: TestServer;
 let userId: string;
 let spaceId: string;
 let token: string;
@@ -32,7 +27,7 @@ function slot(hour: number) {
 }
 
 function postReservation(body: object) {
-  return fetch(`${baseUrl}/api/v1/reservations`, {
+  return fetch(`${server.baseUrl}/api/v1/reservations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
@@ -41,24 +36,15 @@ function postReservation(body: object) {
 
 beforeAll(async () => {
   // Datos propios de esta ejecución; se borran en afterAll sin tocar los del seed.
-  const user = await prisma.user.create({
-    data: {
-      email: `integracion-${RUN_ID}@reservalab.test`,
-      name: 'Prueba de integración',
-      passwordHash: 'no-se-usa',
-      role: 'DOCENTE',
-    },
-  });
+  const user = await createTestUser(RUN_ID, 'DOCENTE');
   const space = await prisma.space.create({
     data: { name: `Espacio de integración ${RUN_ID}`, building: 'Pruebas', capacity: 10 },
   });
   userId = user.id;
   spaceId = space.id;
-  token = signAccessToken({ id: user.id, role: 'DOCENTE' });
+  token = user.token;
 
-  server = createApp().listen(0);
-  await new Promise<void>((resolve) => server.once('listening', () => resolve()));
-  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  server = await startTestServer();
 });
 
 afterAll(async () => {
@@ -69,8 +55,7 @@ afterAll(async () => {
   if (userId) {
     await prisma.user.delete({ where: { id: userId } });
   }
-  await new Promise<void>((resolve) => server?.close(() => resolve()));
-  await prisma.$disconnect();
+  await server?.close();
 });
 
 describe('reservas simultáneas contra la base real', () => {
