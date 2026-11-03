@@ -9,10 +9,12 @@ Sistema de reserva de laboratorios y salones (Arquitectura de Sistemas I, UMES Q
 Requisitos: Docker. Para desarrollar fuera de Docker también hacen falta Node 22 y pnpm 10.
 
 ```bash
-cp .env.example .env                        # y reemplazar los valores de ejemplo
-docker compose up --build                   # PostgreSQL, Redis, Mockoon y la API en http://localhost:3000/api/v1
-docker compose exec api node dist/seed.js   # crea admin@, docente@ y estudiante@reservalab.test
+cp .env.example .env                        # y reemplazar los valores de ejemplo (también VITE_INFO_API_KEY)
+docker compose up --build                   # PostgreSQL, Redis, Mockoon, la API (:3000) y la web (:8080)
+docker compose exec api node dist/seed.js   # usuarios de prueba y la API key de la pantalla informativa
 ```
+
+La web queda en http://localhost:8080 y la API en http://localhost:3000/api/v1. La web también llega a la API por http://localhost:8080/api, porque nginx la reenvía.
 
 La documentación interactiva queda en http://localhost:3000/docs (Swagger UI) y el documento OpenAPI en http://localhost:3000/docs/openapi.json. Se genera desde los esquemas Zod de `packages/shared` ([ADR 0008](docs/adr/0008-documentacion-openapi-desde-zod.md)). En Swagger UI, **Authorize** acepta un access token (`bearerAuth`) o una API key (`apiKeyAuth`).
 
@@ -290,3 +292,47 @@ pnpm cli --help                                                    # ayuda; tamb
   ```bash
   printf '%s\n%s\n' "$EMAIL" "$PASSWORD" | pnpm -s cli login
   ```
+
+## Web
+
+`apps/web` es la web: Vite, HTML, TypeScript y CSS propios, sin frameworks ([ADR 0009](docs/adr/0009-web-sin-frameworks.md)). Tiene tres pantallas, con rutas por hash:
+
+| Ruta | Pantalla |
+|---|---|
+| `#/login` | Iniciar sesión o crear una cuenta. Las cuentas nuevas son `ESTUDIANTE` |
+| `#/reservas` | Espacios con filtros, fecha, bloques libres y ocupados del día, formulario de reserva (solo `DOCENTE` y `ADMIN`) y "Mis reservas" con el botón para cancelar. Hoy, lo que ya pasó aparece como "Ya pasó" |
+| `#/pantalla` | Pantalla informativa para los edificios. No pide sesión y se actualiza cada 30 s: qué espacios están ocupados, hasta qué hora y la siguiente reserva |
+
+- **Cliente de API:** todas las llamadas pasan por `apps/web/src/api.ts`.
+  - Guarda los tokens en `localStorage`.
+  - Si el access token expira, lo renueva con el refresh token y repite la solicitud. Si el refresh token tampoco sirve, vuelve al login.
+  - "Cerrar sesión" llama a `POST /auth/logout`.
+- **Mensajes:** un 409 se muestra como "Ese horario ya está ocupado" y un 403 como "No tienes permiso para hacer esto". Si no hay red o la API está caída, aparece "No se pudo conectar con el servidor".
+- **Seguridad del texto:** el texto de la API nunca se inserta con `innerHTML`, solo como nodo de texto, y una prueba lo comprueba.
+
+### Demo
+
+1. Genera la key de la pantalla informativa y ponla en `VITE_INFO_API_KEY` de `.env`:
+
+   ```bash
+   node -e "console.log('rl_live_' + require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+2. Levanta todo con `docker compose up --build` y corre el seed (`docker compose exec api node dist/seed.js`). El seed crea:
+   - `admin@reservalab.test`, `docente@reservalab.test` y `estudiante@reservalab.test`, con la contraseña `SEED_USER_PASSWORD`.
+   - La API key **"Pantalla informativa (demo)"**, con el valor de `VITE_INFO_API_KEY` y **solo el permiso `read:now`**. Esa key queda dentro del JavaScript público de la web, así que no sirve para nada más. Si cambia, hay que reconstruir la web (`docker compose up --build web`) y correr el seed otra vez.
+3. Crea espacios como ADMIN, con `pnpm cli spaces create …` o en http://localhost:3000/docs.
+4. En http://localhost:8080:
+   - Entra como `docente@reservalab.test`.
+   - Elige un espacio y una fecha, toca "Reservar en este bloque" y ajusta el horario.
+   - Mira "Mis reservas" y cancela.
+   - Abre "Pantalla informativa".
+
+### Desarrollo
+
+```bash
+pnpm --filter @reservalab/web dev     # http://localhost:5173; Vite reenvía /api a http://localhost:3000
+pnpm --filter @reservalab/web build   # archivos estáticos en apps/web/dist
+```
+
+Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a dónde reenvía `/api`.
