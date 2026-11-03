@@ -19,6 +19,8 @@ import { z } from 'zod';
 // comparten origen. Cada respuesta se valida con los esquemas de @reservalab/shared.
 
 const BASE_PATH = '/api/v1';
+// Si la API no responde en este tiempo, se trata como error de red en vez de dejar la pantalla esperando
+const REQUEST_TIMEOUT_MS = 15_000;
 const SESSION_KEY = 'reservalab.session';
 
 export class ApiError extends Error {
@@ -94,6 +96,7 @@ async function send(method: Method, path: string, body: unknown, headers: Record
       method,
       headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch {
     throw new NetworkError();

@@ -261,6 +261,12 @@ button.danger {
   border-color: var(--busy);
 }
 
+.block.past {
+  background: #eef1f4;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
 .block-time {
   font-variant-numeric: tabular-nums;
   font-weight: 600;

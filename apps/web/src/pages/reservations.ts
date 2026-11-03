@@ -1,7 +1,7 @@
 import type { AvailabilityResponse, PublicUser, Reservation, Space, TimeBlock } from '@reservalab/shared';
 import * as api from '../api';
 import { h, notice } from '../dom';
-import { longDate, timeOf, toGuatemalaIso, todayInGuatemala, dateOf } from '../format';
+import { dateOf, longDate, nextQuarterHour, timeOf, toGuatemalaIso, todayInGuatemala } from '../format';
 import { errorNotice } from '../messages';
 import { field } from './login';
 
@@ -61,6 +61,7 @@ export function renderReservations(root: HTMLElement, user: PublicUser): void {
             'aria-pressed': selected?.id === space.id ? 'true' : 'false',
             onclick: () => {
               selected = space;
+              reserveStatus.replaceChildren();
               renderSpaces();
               void loadAvailability();
             },
@@ -77,6 +78,8 @@ export function renderReservations(root: HTMLElement, user: PublicUser): void {
   const dateInput = h('input', { type: 'date', value: date, min: todayInGuatemala(), name: 'date' });
   dateInput.addEventListener('change', () => {
     date = dateInput.value || todayInGuatemala();
+    // El aviso de la reserva anterior ya no corresponde a esta fecha
+    reserveStatus.replaceChildren();
     void loadAvailability();
   });
   const availabilityBox = h('div', { 'aria-live': 'polite' }, h('p', { class: 'muted' }, 'Elige un espacio para ver sus bloques.'));
@@ -96,10 +99,21 @@ export function renderReservations(root: HTMLElement, user: PublicUser): void {
 
   function renderAvailability(): void {
     if (!availability || !selected) return;
-    const blocks = [
-      ...availability.free.map((block) => ({ block, free: true })),
-      ...availability.occupied.map((block) => ({ block, free: false })),
-    ].sort((a, b) => a.block.startsAt.localeCompare(b.block.startsAt));
+    // Hoy no se puede reservar lo que ya pasó: la parte de un bloque libre anterior al próximo cuarto de
+    // hora se muestra como "Ya pasó". Las horas vienen todas con -06:00, así que se comparan como texto.
+    const earliest = date === todayInGuatemala() ? toGuatemalaIso(date, nextQuarterHour()) : null;
+    const free = availability.free.flatMap((block): { block: TimeBlock; kind: 'free' | 'past' }[] => {
+      if (!earliest || block.startsAt >= earliest) return [{ block, kind: 'free' }];
+      if (block.endsAt <= earliest) return [{ block, kind: 'past' }];
+      return [
+        { block: { startsAt: block.startsAt, endsAt: earliest }, kind: 'past' },
+        { block: { startsAt: earliest, endsAt: block.endsAt }, kind: 'free' },
+      ];
+    });
+    const blocks = [...free, ...availability.occupied.map((block) => ({ block, kind: 'occupied' as const }))].sort(
+      (a, b) => a.block.startsAt.localeCompare(b.block.startsAt),
+    );
+    const labels = { free: 'Libre', past: 'Ya pasó', occupied: 'Ocupado' };
 
     availabilityBox.replaceChildren(
       h('h3', {}, `${selected.name} — ${longDate(availability.date)}`),
@@ -107,13 +121,13 @@ export function renderReservations(root: HTMLElement, user: PublicUser): void {
       h(
         'ul',
         { class: 'blocks' },
-        ...blocks.map(({ block, free }) =>
+        ...blocks.map(({ block, kind }) =>
           h(
             'li',
-            { class: free ? 'block free' : 'block occupied' },
+            { class: `block ${kind}` },
             h('span', { class: 'block-time' }, `${timeOf(block.startsAt)} – ${timeOf(block.endsAt)}`),
-            h('span', { class: 'block-label' }, free ? 'Libre' : 'Ocupado'),
-            free && canReserve
+            h('span', { class: 'block-label' }, labels[kind]),
+            kind === 'free' && canReserve
               ? h('button', { type: 'button', class: 'secondary', onclick: () => useBlock(block) }, 'Reservar en este bloque')
               : null,
           ),
@@ -125,8 +139,8 @@ export function renderReservations(root: HTMLElement, user: PublicUser): void {
   // ---------- Reservar ----------
 
   const reserveBox = h('div');
-  const startInput = h('input', { type: 'time', name: 'start', step: 900, required: true });
-  const endInput = h('input', { type: 'time', name: 'end', step: 900, required: true });
+  const startInput = h('input', { type: 'time', name: 'start', required: true });
+  const endInput = h('input', { type: 'time', name: 'end', required: true });
   const reserveStatus = h('div', { 'aria-live': 'polite' });
   const reserveButton = h('button', { type: 'submit' }, 'Reservar');
   const reserveForm = h(

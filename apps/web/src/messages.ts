@@ -3,7 +3,9 @@ import { ApiError, NetworkError } from './api';
 
 // Traduce un error a un mensaje claro para la persona que usa la web.
 export function describeError(error: unknown): { title: string; details: string[] } {
-  if (error instanceof NetworkError) {
+  // Con nginx delante, una API caída llega como 502, 503 o 504 en vez de un fallo de red
+  const gatewayError = error instanceof ApiError && error.status >= 502 && error.status <= 504 && error.code.startsWith('HTTP_');
+  if (error instanceof NetworkError || gatewayError) {
     return {
       title: 'No se pudo conectar con el servidor.',
       details: ['Revisa tu conexión a internet o que la API esté levantada, e intenta de nuevo.'],
@@ -15,7 +17,7 @@ export function describeError(error: unknown): { title: string; details: string[
       case 'RESERVATION_OVERLAP':
         return {
           title: 'Ese horario ya está ocupado.',
-          details: ['Otra persona reservó ese espacio en un horario que se cruza con el tuyo. Elige uno de los bloques libres.'],
+          details: ['Ya hay una reserva de ese espacio que se cruza con el horario que elegiste. Elige uno de los bloques libres.'],
         };
       case 'INVALID_CREDENTIALS':
         return { title: 'Correo o contraseña incorrectos.', details: [] };

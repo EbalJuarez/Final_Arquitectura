@@ -18,6 +18,14 @@ export function todayInGuatemala(now = new Date()): string {
   return new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// Próximo cuarto de hora en Guatemala como HH:MM (19:08 → 19:15). Después de 23:45 devuelve 23:59.
+export function nextQuarterHour(now = new Date()): string {
+  const quarter = 15 * 60 * 1000;
+  const local = new Date(Math.ceil((now.getTime() - 6 * 60 * 60 * 1000) / quarter) * quarter);
+  const sameDay = local.toISOString().slice(0, 10) === todayInGuatemala(now);
+  return sameDay ? local.toISOString().slice(11, 16) : '23:59';
+}
+
 // Fecha y hora locales del formulario → ISO con desfase para la API
 export function toGuatemalaIso(date: string, time: string): string {
   return `${date}T${time}:00${GT_OFFSET}`;
