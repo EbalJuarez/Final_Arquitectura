@@ -65,5 +65,20 @@ services:
       mockoon:
         condition: service_started
 
+  # Web estática servida por nginx, que reenvía /api a la API
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Key de la pantalla informativa (solo read:now); se incrusta en el JavaScript al construir
+        VITE_INFO_API_KEY: ${VITE_INFO_API_KEY:-}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   postgres-data:
