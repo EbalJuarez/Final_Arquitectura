@@ -255,3 +255,38 @@ BENCH_BASE_URL=http://localhost:3010 pnpm --filter @reservalab/api bench:cache  
 ```
 
 En el equipo de desarrollo, el p50 bajó de unos 6 ms (MISS) a unos 2,3 ms (HIT). Las condiciones y los resultados completos están en [docs/benchmarks/cache.md](docs/benchmarks/cache.md).
+
+## CLI de administración
+
+`apps/cli` es una herramienta de línea de comandos para el administrador. Solo habla con la API por HTTP y valida entradas y respuestas con los esquemas de `@reservalab/shared`; nunca accede a la base.
+
+```bash
+pnpm cli login                                                     # pide correo y contraseña (sin eco)
+pnpm cli spaces list --building "Edificio A" --min-capacity 20
+pnpm cli spaces create --name "Laboratorio de Redes" --building "Edificio A" --capacity 30
+pnpm cli spaces delete <id>
+pnpm cli keys create --name "Pantalla del Edificio A" --permissions read:now,read:spaces
+pnpm cli keys list
+pnpm cli keys revoke <id>
+pnpm cli --help                                                    # ayuda; también `pnpm cli keys create --help`
+```
+
+- **URL de la API:** `RESERVALAB_API_URL` (por defecto `http://localhost:3000`).
+- **Sesión:**
+  - `login` guarda el correo y los tokens en `~/.reservalab/config.json`, con permisos `600` y la carpeta con `700`. En Windows esos permisos no aplican, y el archivo queda protegido por los permisos del perfil del usuario.
+  - `RESERVALAB_CONFIG_DIR` cambia la carpeta.
+  - Si la sesión guardada es de otra URL de la API, hay que volver a iniciar sesión.
+- **Tokens:** cuando el access token (15 min) expira, el CLI lo renueva una sola vez con el refresh token y repite la solicitud. Si el refresh token tampoco sirve, pide volver a ejecutar `pnpm cli login`.
+- **API keys:** `keys create` imprime la key completa **una sola vez**, con una advertencia: la API solo guarda su hash. La key va a stdout y los avisos a stderr, así que se puede guardar con `pnpm -s cli keys create ... > key.txt`.
+- **Errores:** se muestran como `Error CODIGO (HTTP estado): mensaje`, con los campos inválidos debajo, y el comando termina con código de salida 1. Los datos se validan antes de enviarlos.
+- **Salida procesable:** `--json` imprime los datos en JSON por stdout y los errores como `{ "error": { code, message, status } }` por stderr. Con `pnpm -s` se oculta la línea que pnpm agrega al ejecutar el script:
+
+  ```bash
+  pnpm -s cli spaces list --json | jq '.[].name'
+  ```
+
+- **Sin terminal** (en un script), `login` lee el correo y la contraseña como dos líneas de la entrada estándar:
+
+  ```bash
+  printf '%s\n%s\n' "$EMAIL" "$PASSWORD" | pnpm -s cli login
+  ```
