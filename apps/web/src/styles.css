@@ -1,0 +1,355 @@
+/* Estilos propios, sin frameworks. Colores en variables para cambiarlos en un solo lugar. */
+
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #1d2733;
+  --muted: #5d6b7a;
+  --border: #d5dce3;
+  --primary: #1f5fa8;
+  --primary-dark: #174a83;
+  --free: #1e7a46;
+  --free-bg: #e5f4ea;
+  --busy: #b3261e;
+  --busy-bg: #fbe7e5;
+  --info-bg: #e8f0fa;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 8px 0 16px;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 12px 0 4px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- Barra superior ---------- */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.topbar a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.topbar .brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.topbar nav a {
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.topbar a.active {
+  background: rgb(255 255 255 / 0.2);
+}
+
+.topbar .session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Tarjetas y rejilla ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* ---------- Formularios ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.field span {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--primary-dark);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.secondary {
+  background: #fff;
+  color: var(--primary);
+}
+
+.topbar button.secondary {
+  border-color: #fff;
+}
+
+button.danger {
+  background: #fff;
+  color: var(--busy);
+  border-color: var(--busy);
+}
+
+.filters,
+.reserve-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.filters .field,
+.reserve-form .field {
+  margin-bottom: 0;
+}
+
+/* ---------- Avisos ---------- */
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 12px 0;
+  border-left: 4px solid;
+}
+
+.notice p {
+  margin: 4px 0 0;
+}
+
+.notice-info {
+  background: var(--info-bg);
+  border-color: var(--primary);
+}
+
+.notice-success {
+  background: var(--free-bg);
+  border-color: var(--free);
+}
+
+.notice-error {
+  background: var(--busy-bg);
+  border-color: var(--busy);
+}
+
+/* ---------- Espacios y bloques ---------- */
+
+.space-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.space {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.space:hover {
+  background: var(--info-bg);
+}
+
+.space.selected {
+  border: 2px solid var(--primary);
+  background: var(--info-bg);
+}
+
+.blocks {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 16px;
+}
+
+.block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  border-left: 6px solid;
+}
+
+.block.free {
+  background: var(--free-bg);
+  border-color: var(--free);
+}
+
+.block.occupied {
+  background: var(--busy-bg);
+  border-color: var(--busy);
+}
+
+.block-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 110px;
+}
+
+.block-label {
+  flex: 1;
+}
+
+/* ---------- Mis reservas ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+tr.cancelled td {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* ---------- Pantalla informativa ---------- */
+
+.info-screen {
+  max-width: none;
+}
+
+.now-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.now-card {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 16px;
+  border-top: 8px solid;
+}
+
+.now-card.available {
+  border-color: var(--free);
+}
+
+.now-card.busy {
+  border-color: var(--busy);
+}
+
+.now-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.now-card h2 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.now-card p {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.available .badge {
+  background: var(--free);
+}
+
+.busy .badge {
+  background: var(--busy);
+}
+
+.until {
+  font-weight: 700;
+  color: var(--busy);
+}
