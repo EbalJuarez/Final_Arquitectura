@@ -230,6 +230,7 @@ sequenceDiagram
         else Deadlock 40P01 entre INSERT simultáneos
             DB-->>Rep: 40P01
             Rep->>DB: reintenta el INSERT (hasta 3 intentos)
+            Note over Rep,DB: El reintento termina como 23P01 (409 RESERVATION_OVERLAP) o como inserción exitosa (201)
         else Insertada
             DB-->>Rep: fila CONFIRMED
             Rep-->>S: status CREATED
