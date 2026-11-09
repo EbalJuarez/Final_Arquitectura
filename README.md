@@ -382,11 +382,13 @@ Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a
 
 ## Reparto por integrante
 
+Según el historial de Git. El repositorio no tiene pull requests ni merges: todo el trabajo entró directo a `main`, salvo el cierre de la entrega, que está en la rama `chore/cierre-entrega`.
+
 | Integrante | Responsabilidad | Evidencia (ramas/PR) |
 |---|---|---|
-| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
-| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
-| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
+| EbalJuarez `<COMPLETAR: nombre completo y carné>` | Estructura inicial del monorepo y Docker Compose; esquema de Prisma con la migración anti-traslape; autenticación JWT con refresh token; reservas con notificaciones y reintento ante deadlock; caché con Redis y su medición de latencia; ADR 0002, 0004, 0005 y 0007. En la rama de cierre: seed automático, `test:coverage` y CI, ADR 0001, documento de arquitectura y prueba de clon limpio. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 39 commits, de `a059867` (2026-10-28) a `3d1e30d` (2026-11-02), sobre todo en `apps/api`, infraestructura y `docs/adr`. `chore/cierre-entrega`: 25 commits, de `9bddd25` a `4ef62ef` (2026-11-09), hechos con Claude Code bajo su usuario de Git. |
+| Gorozco710 `<COMPLETAR: nombre completo y carné>` | Espacios (esquemas, CRUD con filtros y disponibilidad diaria); API keys con permisos y límite por minuto en Redis; `GET /now`; CLI de administración; ADR 0003 y 0006. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 20 commits, de `d99c23a` a `90d1efc` (2026-11-02), en `apps/api`, `apps/cli`, `packages/shared` y `docs/adr`. |
+| Yoshua-G12 `<COMPLETAR: nombre completo y carné>` | Documentación OpenAPI en `/docs` y su prueba; la web (login, reservas y pantalla informativa) y su servicio con nginx; key de la pantalla informativa en el seed; ADR 0008 y 0009. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 12 commits, de `5717d59` a `72c4a19` (2026-11-02), principalmente en `apps/web`, y también en `apps/api`, `packages/shared` y `docs/adr`. |
 
 ## Uso de inteligencia artificial
 
@@ -397,6 +399,6 @@ En este proyecto usamos dos herramientas de IA de Anthropic:
 
 Lo usamos bajo la dirección de `<COMPLETAR: quién o quiénes>`, que definían cada tarea y sus criterios de aceptación. Todo cambio pasó por revisión humana antes de integrarse. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
 
-- **Partes en las que se usó:** `<COMPLETAR: qué módulos, documentos o tareas>`.
-- **Cómo se verificó:** `<COMPLETAR: por ejemplo, revisión del diff, pruebas con Vitest, pruebas manuales con docker compose>`.
+- **Partes en las que se usó:** Claude (chat) para planificar fases, redactar prompts y revisar resultados. Claude Code para generar y modificar código, pruebas, ADR, documentación y configuración de Docker, siguiendo esos prompts.
+- **Cómo se verificó:** revisión humana de cada fase, pruebas unitarias y de integración con Vitest, cobertura con umbral de 70 % en la API, y prueba completa desde un clon limpio con `docker compose up`.
 - **Partes hechas sin IA:** `<COMPLETAR, o borrar si no aplica>`.
