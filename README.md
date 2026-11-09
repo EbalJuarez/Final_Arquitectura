@@ -6,7 +6,9 @@ Sistema de reserva de laboratorios y salones (Arquitectura de Sistemas I, UMES Q
 
 ## Puesta en marcha
 
-Requisitos: Docker. Para desarrollar fuera de Docker también hacen falta Node 22 y pnpm 10.
+Requisitos:
+- **Docker con Docker Compose.** Es lo único necesario para levantar todo.
+- **Para desarrollar o correr las pruebas fuera de Docker:** Node 22 (lo fija [`.nvmrc`](.nvmrc); `package.json` declara `"engines": { "node": ">=22" }`) y pnpm 10 (`packageManager: pnpm@10.34.9`, que se activa con `corepack enable`).
 
 ```bash
 cp .env.example .env          # los valores de ejemplo sirven para probar en local; cambiarlos fuera de la demo
@@ -33,6 +35,7 @@ La documentación interactiva queda en http://localhost:3000/docs (Swagger UI) y
 - El seed es idempotente: busca usuarios por email, espacios por nombre y edificio y la key por su hash, y solo crea lo que falta. No modifica lo que ya existe, así que correrlo en cada arranque no duplica nada. Si se borra un espacio de ejemplo, vuelve a aparecer en el siguiente arranque.
 - Dentro de Docker la API usa los hosts `postgres`, `redis` y `mockoon`. El servicio `api` reemplaza las URL de `.env`, que apuntan a `localhost`.
 - `docker compose down -v` borra también la base. La próxima vez que arranque se aplican de nuevo las migraciones y el seed.
+- `docker-compose.yml` fija `name: reservalab`, así que dos copias del repo en carpetas distintas comparten contenedores y volumen. Antes de probar en otra carpeta hay que ejecutar `docker compose down -v` en la primera.
 
 ### Desarrollo sin el contenedor de la API
 
@@ -348,3 +351,38 @@ pnpm --filter @reservalab/web build   # archivos estáticos en apps/web/dist
 ```
 
 Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a dónde reenvía `/api`.
+
+## Documentación
+
+- **Decisiones de arquitectura (ADR)** en [`docs/adr/`](docs/adr/):
+  - [ADR 0002: Autenticación con access token JWT y refresh token opaco](docs/adr/0002-autenticacion-jwt.md)
+  - [ADR 0003: Borrado de espacios con reservas](docs/adr/0003-borrado-de-espacios.md)
+  - [ADR 0004: Protección contra reservas traslapadas en dos niveles](docs/adr/0004-proteccion-de-traslapes.md)
+  - [ADR 0005: Notificaciones tolerantes a fallos](docs/adr/0005-notificaciones-tolerantes-a-fallos.md)
+  - [ADR 0006: API keys y límite de solicitudes para sistemas externos](docs/adr/0006-api-keys-y-limite-de-solicitudes.md)
+  - [ADR 0007: Caché de lecturas con Redis](docs/adr/0007-cache-con-redis.md)
+  - [ADR 0008: Documentación OpenAPI generada desde los esquemas Zod](docs/adr/0008-documentacion-openapi-desde-zod.md)
+  - [ADR 0009: Web en TypeScript sin frameworks, servida por nginx](docs/adr/0009-web-sin-frameworks.md)
+- **Mediciones** en [`docs/benchmarks/`](docs/benchmarks/): [latencia con y sin caché](docs/benchmarks/cache.md).
+- **API:** Swagger UI en http://localhost:3000/docs con la pila levantada.
+
+## Reparto por integrante
+
+| Integrante | Responsabilidad | Evidencia (ramas/PR) |
+|---|---|---|
+| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
+| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
+| `<COMPLETAR: nombre y carné>` | `<COMPLETAR>` | `<COMPLETAR>` |
+
+## Uso de inteligencia artificial
+
+En este proyecto usamos dos herramientas de IA de Anthropic:
+
+- **Claude (chat):** para planificar el trabajo y revisar decisiones, código y documentación.
+- **Claude Code:** para generar y modificar código, pruebas, configuración y documentación del repositorio.
+
+Lo usamos bajo la dirección de `<COMPLETAR: quién o quiénes>`, que definían cada tarea y sus criterios de aceptación. Todo cambio pasó por revisión humana antes de integrarse. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
+
+- **Partes en las que se usó:** `<COMPLETAR: qué módulos, documentos o tareas>`.
+- **Cómo se verificó:** `<COMPLETAR: por ejemplo, revisión del diff, pruebas con Vitest, pruebas manuales con docker compose>`.
+- **Partes hechas sin IA:** `<COMPLETAR, o borrar si no aplica>`.
