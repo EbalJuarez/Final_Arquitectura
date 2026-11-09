@@ -1,0 +1,102 @@
+# Integración continua: instala, revisa tipos, corre las pruebas unitarias con cobertura y las de
+# integración contra PostgreSQL y Redis reales.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Un push nuevo a la misma rama cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificacion:
+    name: Lint, pruebas y cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Instala la versión de pnpm fijada en packageManager (package.json)
+      - uses: pnpm/action-setup@v4
+
+      # Node 22, la versión que fija .nvmrc
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Generar el cliente de Prisma
+        run: pnpm --filter @reservalab/api exec prisma generate
+
+      # El repo no tiene ESLint: el chequeo estático es tsc --noEmit en cada paquete.
+      - name: Lint (typecheck)
+        run: pnpm typecheck
+
+      - name: Pruebas unitarias
+        run: pnpm test
+
+      # Falla si la API queda bajo el umbral de coverage.thresholds.json; imprime la tabla por paquete.
+      - name: Cobertura
+        run: pnpm test:coverage
+
+  integracion:
+    name: Pruebas de integración
+    runs-on: ubuntu-latest
+    # Mismas versiones y credenciales de ejemplo que docker-compose.yml y .env.example
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reservalab
+          POSTGRES_PASSWORD: cambiar_esta_clave_falsa
+          POSTGRES_DB: reservalab
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U reservalab -d reservalab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Las pruebas de integración leen el .env de la raíz; los valores de ejemplo apuntan a localhost,
+      # que es donde quedan los servicios del job.
+      - name: Crear .env desde .env.example
+        run: cp .env.example .env
+
+      - name: Generar el cliente de Prisma
+        run: pnpm --filter @reservalab/api exec prisma generate
+
+      - name: Aplicar migraciones
+        run: pnpm --filter @reservalab/api db:deploy
+
+      - name: Pruebas de integración
+        run: pnpm test:integration

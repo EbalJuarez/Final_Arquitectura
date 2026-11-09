@@ -71,6 +71,10 @@ pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis real
 
 El reporte HTML de cada paquete queda en `apps/<paquete>/coverage/index.html`.
 
+En GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), cada push y cada pull request corren dos jobs, con Node 22 (de `.nvmrc`):
+- **Verificación:** `pnpm typecheck` como lint, porque el repo no tiene ESLint; después `pnpm test` y `pnpm test:coverage`.
+- **Integración:** `pnpm test:integration` con PostgreSQL 16 y Redis 7 como servicios.
+
 Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Hoy comprueban tres cosas:
 - Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
 - El ciclo de vida de una API key: crearla, llamar a `/now` (200), revocarla y volver a llamar (401). También que una key sin `read:now` recibe 403.
