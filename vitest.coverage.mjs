@@ -6,20 +6,16 @@ import { readFileSync } from 'node:fs';
 //   - metrics: métricas a las que se aplica (lines, statements, branches, functions).
 //   - enforcedPackages: paquetes a los que se exige. Para exigirlo a la CLI o a la web basta agregar
 //     "@reservalab/cli" o "@reservalab/web" a la lista.
-type Metric = 'lines' | 'statements' | 'branches' | 'functions';
+// Es .mjs (con tipos en vitest.coverage.d.mts) porque la raíz no es "type": "module" y el cargador
+// nativo de configuración de Vite no acepta TypeScript ni ESM en un .ts de ahí.
 
-interface CoverageConfig {
-  threshold: number;
-  metrics: Metric[];
-  enforcedPackages: string[];
-}
-
-export const coverageConfig: CoverageConfig = JSON.parse(
+/** @type {import('./vitest.coverage.d.mts').CoverageConfig} */
+export const coverageConfig = JSON.parse(
   readFileSync(new URL('./coverage.thresholds.json', import.meta.url), 'utf8'),
 );
 
-// Umbrales para coverage.thresholds de Vitest; vacío si el paquete no está en enforcedPackages.
-export function coverageThresholds(packageName: string): Partial<Record<Metric, number>> {
+/** Umbrales para coverage.thresholds de Vitest; vacío si el paquete no está en enforcedPackages. */
+export function coverageThresholds(packageName) {
   if (!coverageConfig.enforcedPackages.includes(packageName)) {
     return {};
   }

@@ -2,7 +2,8 @@
   "$schema": "https://turborepo.com/schema.json",
   "globalDependencies": [
     "coverage.thresholds.json",
-    "vitest.coverage.ts"
+    "vitest.coverage.mjs",
+    "vitest.coverage.d.mts"
   ],
   "tasks": {
     "dev": {

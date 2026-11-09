@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import { coverageThresholds } from '../../vitest.coverage';
+import { coverageThresholds } from '../../vitest.coverage.mjs';
 
 export default defineConfig({
   test: {
