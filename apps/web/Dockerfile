@@ -14,6 +14,8 @@ COPY packages/shared/package.json packages/shared/
 RUN pnpm install --frozen-lockfile --filter @reservalab/web...
 
 COPY tsconfig.base.json ./
+# El build corre tsc, que revisa vitest.config.ts, y este importa el umbral común de cobertura
+COPY vitest.coverage.mjs vitest.coverage.d.mts coverage.thresholds.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
 
