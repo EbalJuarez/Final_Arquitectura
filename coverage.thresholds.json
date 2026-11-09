@@ -1,5 +1,5 @@
 {
   "threshold": 70,
-  "metrics": ["lines", "statements", "branches"],
+  "metrics": ["lines", "statements", "branches", "functions"],
   "enforcedPackages": ["@reservalab/api"]
 }
