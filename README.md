@@ -65,7 +65,7 @@ pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis real
 ```
 
 `pnpm test:coverage` corre Vitest con cobertura en cada paquete vía Turborepo y al final imprime una tabla por paquete. El umbral está en un solo lugar, [`coverage.thresholds.json`](coverage.thresholds.json):
-- **Valor:** 70 % en lines, statements y branches.
+- **Valor:** 70 % en lines, statements, branches y functions.
 - **A quién se exige:** por ahora solo a la API. Si algún paquete exigido queda por debajo, el comando falla.
 - **Cómo cambiarlo:** para exigirlo también a la CLI o a la web, se agrega `@reservalab/cli` o `@reservalab/web` a `enforcedPackages`. Las métricas se cambian en `metrics`.
 
