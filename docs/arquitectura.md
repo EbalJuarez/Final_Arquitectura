@@ -316,7 +316,7 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 | No hay reservas traslapadas | Reservas `CONFIRMED` por horario tras dos `POST` simultáneos al mismo horario | `test/integration/reservation-concurrency.int.test.ts`: 5 horarios (8, 10, 12, 14 y 16 h), dos `POST` en paralelo en cada uno, contra PostgreSQL real | En los 5 casos, exactamente un 201 y un 409, y 1 sola reserva `CONFIRMED` |
 | La base rechaza el traslape aunque se salte el servicio | Resultado de un INSERT traslapado directo al repositorio | Misma prueba, caso «la restricción EXCLUDE rechaza el traslape…» | Devuelve `OVERLAP` |
 | Carrera sin errores 500 | Respuestas 500 en INSERT simultáneos | Prueba de integración anterior. El [ADR 0004](adr/0004-proteccion-de-traslapes.md) registra que, antes de reintentar ante el 40P01, la API respondía 500 en 3 de 4 ejecuciones. | 0 respuestas 500 en las 5 carreras de la prueba actual |
-| Flujo completo desde un clon limpio | Reserva traslapada rechazada | Prueba manual del 2026-11-09 con `docker compose up` sobre un clon recién hecho | 409 `RESERVATION_OVERLAP` |
+| Flujo completo desde un clon limpio | Pasos del flujo que dan el resultado esperado, incluida la reserva traslapada rechazada | [`scripts/prueba-clon-limpio.sh`](../scripts/prueba-clon-limpio.sh): clona la rama, levanta con `docker compose up --build` y recorre 15 pasos (login, espacios, reserva, traslape, caché, `/docs`, `/now` y web). Ejecuta `docker compose down -v` sobre la copia local. | 15 de 15 el 2026-11-09; el traslape da 409 `RESERVATION_OVERLAP` |
 
 ### Rendimiento
 
