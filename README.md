@@ -9,19 +9,30 @@ Sistema de reserva de laboratorios y salones (Arquitectura de Sistemas I, UMES Q
 Requisitos: Docker. Para desarrollar fuera de Docker también hacen falta Node 22 y pnpm 10.
 
 ```bash
-cp .env.example .env                        # y reemplazar los valores de ejemplo (también VITE_INFO_API_KEY)
-docker compose up --build                   # PostgreSQL, Redis, Mockoon, la API (:3000) y la web (:8080)
-docker compose exec api node dist/seed.js   # usuarios de prueba y la API key de la pantalla informativa
+cp .env.example .env          # los valores de ejemplo sirven para probar en local; cambiarlos fuera de la demo
+docker compose up --build     # PostgreSQL, Redis, Mockoon, la API (:3000) y la web (:8080); migra y corre el seed
 ```
+
+### Credenciales del seed (solo desarrollo)
+
+Al arrancar, la API crea estas cuentas si no existen. Todas usan la contraseña de `SEED_USER_PASSWORD` (en `.env.example`: `clave_de_prueba_falsa`):
+
+| Email | Rol |
+|---|---|
+| `admin@reservalab.test` | ADMIN |
+| `docente@reservalab.test` | DOCENTE |
+| `estudiante@reservalab.test` | ESTUDIANTE |
+
+También crea tres espacios (Laboratorio de Computación 1, Laboratorio de Redes y Salón 201) y la API key de la pantalla informativa con el valor de `VITE_INFO_API_KEY`, que solo tiene el permiso `read:now`.
 
 La web queda en http://localhost:8080 y la API en http://localhost:3000/api/v1. La web también llega a la API por http://localhost:8080/api, porque nginx la reenvía.
 
 La documentación interactiva queda en http://localhost:3000/docs (Swagger UI) y el documento OpenAPI en http://localhost:3000/docs/openapi.json. Se genera desde los esquemas Zod de `packages/shared` ([ADR 0008](docs/adr/0008-documentacion-openapi-desde-zod.md)). En Swagger UI, **Authorize** acepta un access token (`bearerAuth`) o una API key (`apiKeyAuth`).
 
-- Al arrancar, el contenedor `api` espera a que PostgreSQL y Redis estén sanos, aplica las migraciones pendientes (`prisma migrate deploy`) y luego inicia el servidor.
-- El seed no corre solo, porque crea usuarios con una contraseña conocida (`SEED_USER_PASSWORD`). Es idempotente: si los usuarios ya existen no los modifica, así que se puede repetir sin problema.
+- Al arrancar, el contenedor `api` espera a que PostgreSQL y Redis estén sanos, aplica las migraciones pendientes (`prisma migrate deploy`), corre el seed y luego inicia el servidor. Si la migración o el seed fallan, la API no arranca.
+- El seed es idempotente: busca usuarios por email, espacios por nombre y edificio y la key por su hash, y solo crea lo que falta. No modifica lo que ya existe, así que correrlo en cada arranque no duplica nada. Si se borra un espacio de ejemplo, vuelve a aparecer en el siguiente arranque.
 - Dentro de Docker la API usa los hosts `postgres`, `redis` y `mockoon`. El servicio `api` reemplaza las URL de `.env`, que apuntan a `localhost`.
-- `docker compose down -v` borra también la base. La próxima vez que arranque se aplican de nuevo las migraciones, y hay que volver a correr el seed.
+- `docker compose down -v` borra también la base. La próxima vez que arranque se aplican de nuevo las migraciones y el seed.
 
 ### Desarrollo sin el contenedor de la API
 
@@ -312,16 +323,17 @@ pnpm cli --help                                                    # ayuda; tamb
 
 ### Demo
 
-1. Genera la key de la pantalla informativa y ponla en `VITE_INFO_API_KEY` de `.env`:
+1. `.env.example` trae una key de demo en `VITE_INFO_API_KEY` que funciona tal cual. Fuera de la demo, genera una propia:
 
    ```bash
    node -e "console.log('rl_live_' + require('crypto').randomBytes(32).toString('base64url'))"
    ```
 
-2. Levanta todo con `docker compose up --build` y corre el seed (`docker compose exec api node dist/seed.js`). El seed crea:
+2. Levanta todo con `docker compose up --build`. El seed corre solo y crea:
    - `admin@reservalab.test`, `docente@reservalab.test` y `estudiante@reservalab.test`, con la contraseña `SEED_USER_PASSWORD`.
-   - La API key **"Pantalla informativa (demo)"**, con el valor de `VITE_INFO_API_KEY` y **solo el permiso `read:now`**. Esa key queda dentro del JavaScript público de la web, así que no sirve para nada más. Si cambia, hay que reconstruir la web (`docker compose up --build web`) y correr el seed otra vez.
-3. Crea espacios como ADMIN, con `pnpm cli spaces create …` o en http://localhost:3000/docs.
+   - Tres espacios de ejemplo.
+   - La API key **"Pantalla informativa (demo)"**, con el valor de `VITE_INFO_API_KEY` y **solo el permiso `read:now`**. Esa key queda dentro del JavaScript público de la web, así que no sirve para nada más. Si cambia, hay que reconstruir la web y reiniciar la API (`docker compose up --build web api`).
+3. Si quieres más espacios, créalos como ADMIN con `pnpm cli spaces create …` o en http://localhost:3000/docs.
 4. En http://localhost:8080:
    - Entra como `docente@reservalab.test`.
    - Elige un espacio y una fecha, toca "Reservar en este bloque" y ajusta el horario.

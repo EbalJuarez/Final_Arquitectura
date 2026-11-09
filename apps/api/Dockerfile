@@ -52,5 +52,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
   CMD node -e "fetch('http://localhost:'+(process.env.API_PORT||3000)+'/api/v1/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 
-# Aplica las migraciones pendientes y luego arranca; exec deja a Node como PID 1 para recibir SIGTERM
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma && exec node --enable-source-maps dist/server.js"]
+# Aplica las migraciones pendientes, corre el seed (idempotente) y luego arranca; exec deja a Node como
+# PID 1 para recibir SIGTERM. Si la migración o el seed fallan, la API no arranca.
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma && node --enable-source-maps dist/seed.js && exec node --enable-source-maps dist/server.js"]

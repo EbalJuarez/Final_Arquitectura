@@ -2,8 +2,9 @@ import { hash } from '@node-rs/argon2';
 import { PrismaClient, type Role } from '@prisma/client';
 import { hashApiKey } from '../src/lib/api-keys';
 
-// Crea un usuario de prueba por rol y la API key de la pantalla informativa de la demo.
-// Es idempotente: si el email o la key ya existen no los toca.
+// Crea un usuario de prueba por rol, tres espacios de ejemplo y la API key de la pantalla informativa.
+// Es idempotente: si el email, el espacio (nombre + edificio) o la key ya existen no los toca.
+// Corre en cada arranque del contenedor de la API, después de las migraciones.
 const prisma = new PrismaClient();
 
 const users: { email: string; name: string; role: Role }[] = [
@@ -28,7 +29,28 @@ async function main(): Promise<void> {
     console.log(`  ✔ ${user.role.padEnd(10)} ${user.email}`);
   }
 
+  await seedSpaces();
   await seedInfoScreenKey();
+}
+
+const spaces: { name: string; building: string; capacity: number }[] = [
+  { name: 'Laboratorio de Computación 1', building: 'Edificio A', capacity: 30 },
+  { name: 'Laboratorio de Redes', building: 'Edificio A', capacity: 20 },
+  { name: 'Salón 201', building: 'Edificio B', capacity: 40 },
+];
+
+// Space no tiene una columna única, así que se busca por nombre y edificio antes de crear.
+async function seedSpaces(): Promise<void> {
+  for (const space of spaces) {
+    const existing = await prisma.space.findFirst({
+      where: { name: space.name, building: space.building },
+      select: { id: true },
+    });
+    if (!existing) {
+      await prisma.space.create({ data: space });
+    }
+    console.log(`  ✔ Espacio   ${space.name} (${space.building})`);
+  }
 }
 
 // Formato de las keys que emite la API: rl_live_ + 32 bytes en base64url
