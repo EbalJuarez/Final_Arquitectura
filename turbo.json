@@ -1,5 +1,9 @@
 {
   "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [
+    "coverage.thresholds.json",
+    "vitest.coverage.ts"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
@@ -19,6 +23,11 @@
       ]
     },
     "test": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test:coverage": {
       "dependsOn": [
         "^build"
       ],

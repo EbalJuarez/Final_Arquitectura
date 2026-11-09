@@ -59,9 +59,17 @@ La imagen se define en [`apps/api/Dockerfile`](apps/api/Dockerfile) y tiene tres
 
 ```bash
 pnpm typecheck          # tipos de todos los paquetes
-pnpm test               # pruebas unitarias con cobertura (no usan la base ni la red)
+pnpm test               # pruebas unitarias (no usan la base ni la red)
+pnpm test:coverage      # las mismas, con cobertura por paquete y umbral
 pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis reales
 ```
+
+`pnpm test:coverage` corre Vitest con cobertura en cada paquete vía Turborepo y al final imprime una tabla por paquete. El umbral está en un solo lugar, [`coverage.thresholds.json`](coverage.thresholds.json):
+- **Valor:** 70 % en lines, statements y branches.
+- **A quién se exige:** por ahora solo a la API. Si algún paquete exigido queda por debajo, el comando falla.
+- **Cómo cambiarlo:** para exigirlo también a la CLI o a la web, se agrega `@reservalab/cli` o `@reservalab/web` a `enforcedPackages`. Las métricas se cambian en `metrics`.
+
+El reporte HTML de cada paquete queda en `apps/<paquete>/coverage/index.html`.
 
 Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Hoy comprueban tres cosas:
 - Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
