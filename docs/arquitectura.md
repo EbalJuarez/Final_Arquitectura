@@ -250,40 +250,57 @@ El nivel 1 da un mensaje claro sin intentar el INSERT. El nivel 2 es la única g
 sequenceDiagram
     autonumber
     actor U as Usuario
+    participant R as auth.routes
+    participant C as auth.controller
     participant A as auth.service
     participant UR as user.repository
     participant TR as refresh-token.repository
     participant DB as PostgreSQL
 
-    U->>A: POST /auth/login (email, password)
+    U->>R: POST /auth/login (email, password)
+    R->>R: validate(LoginSchema)
+    R->>C: login(req, res)
+    C->>A: login(input)
     A->>UR: findUserByEmail
     UR->>DB: SELECT User
     alt Correo inexistente
         A->>A: verifica contra un hash de relleno (mismo tiempo)
-        A-->>U: 401 INVALID_CREDENTIALS
+        A-->>R: AppError 401
+        R-->>U: 401 INVALID_CREDENTIALS (vía errors.ts)
     else Contraseña incorrecta (argon2 verify)
-        A-->>U: 401 INVALID_CREDENTIALS
+        A-->>R: AppError 401
+        R-->>U: 401 INVALID_CREDENTIALS (vía errors.ts)
     else Credenciales válidas
         A->>A: refreshToken = 32 bytes aleatorios (base64url)
         A->>TR: createRefreshToken(SHA-256 del token, vence en 7 días)
         TR->>DB: INSERT RefreshToken
         A->>A: accessToken = JWT HS256 con sub y role, 15 min
-        A-->>U: 200 accessToken y refreshToken
+        A-->>C: accessToken y refreshToken
+        C-->>U: 200 accessToken y refreshToken
     end
 
     Note over U,A: 15 minutos después el access token expira
-    U->>A: POST /auth/refresh (refreshToken)
+    U->>R: POST /auth/refresh (refreshToken)
+    R->>R: validate(RefreshTokenSchema)
+    R->>C: refresh(req, res)
+    C->>A: refresh(refreshToken)
     A->>TR: findRefreshTokenByHash(SHA-256)
+    TR->>DB: SELECT RefreshToken
     alt Existe, no revocado y no vencido
-        A-->>U: 200 accessToken nuevo
+        A-->>C: accessToken nuevo
+        C-->>U: 200 accessToken nuevo
     else Inexistente, revocado o vencido
-        A-->>U: 401 INVALID_REFRESH_TOKEN
+        A-->>R: AppError 401
+        R-->>U: 401 INVALID_REFRESH_TOKEN (vía errors.ts)
     end
 
-    U->>A: POST /auth/logout (Bearer + refreshToken)
+    U->>R: POST /auth/logout (Bearer + refreshToken)
+    R->>R: authenticate, validate(RefreshTokenSchema)
+    R->>C: logout(req, res)
+    C->>A: logout(userId, refreshToken)
     A->>TR: revokeRefreshToken(hash, userId)
     TR->>DB: UPDATE revokedAt
-    A-->>U: 204, y desde ahí /refresh responde 401
+    C-->>U: 204, y desde ahí /refresh responde 401
 ```
 
 El access token no consulta la base al verificarse: lo valida `middleware/authenticate.ts` con la firma. El refresh token solo se guarda como hash ([ADR 0002](adr/0002-autenticacion-jwt.md)).
