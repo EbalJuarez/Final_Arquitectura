@@ -51,9 +51,9 @@ pnpm --filter @reservalab/api dev                 # API en http://localhost:3000
 
 La imagen se define en [`apps/api/Dockerfile`](apps/api/Dockerfile) y tiene tres etapas:
 
-1. **Instalación:** instala con pnpm.
-2. **Build:** `esbuild` empaqueta la API y `@reservalab/shared` en `dist/`.
-3. **Imagen final:** solo Node 22 Alpine, el bundle, las migraciones y las dependencias de producción.
+1. **Base (`base`):** Node 22 Alpine con OpenSSL, que necesitan los motores de Prisma, y pnpm activado con corepack.
+2. **Build (`build`):** instala las dependencias con pnpm (solo las de la API y `shared`). Después `esbuild` empaqueta la API y `@reservalab/shared` en `dist/`, `pnpm deploy --prod` prepara las dependencias de producción, se genera el cliente de Prisma y se borran los motores WASM que no se usan.
+3. **Imagen final (`runtime`):** Node 22 Alpine con OpenSSL, el bundle, el esquema con las migraciones y las dependencias de producción. Corre como el usuario `node`.
 
 ## Pruebas
 
