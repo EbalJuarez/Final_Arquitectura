@@ -366,6 +366,7 @@ Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a
 
 ## Documentación
 
+- **[Documento de arquitectura](docs/arquitectura.md):** contexto, contenedores, capas de la API, modelo de datos, flujos clave, atributos de calidad medidos y limitaciones conocidas.
 - **Decisiones de arquitectura (ADR)** en [`docs/adr/`](docs/adr/):
   - [ADR 0001: Express 5, Prisma 6 y monorepo con pnpm y Turborepo](docs/adr/0001-express-prisma-monorepo.md)
   - [ADR 0002: Autenticación con access token JWT y refresh token opaco](docs/adr/0002-autenticacion-jwt.md)
