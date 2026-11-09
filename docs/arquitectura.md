@@ -370,7 +370,7 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 
 **Pruebas y calidad**
 - **Cobertura de la CLI y la web sin umbral.** La CLI está en 43,90 % de lines y 50,94 % de functions; la web, en 23,03 % de lines y 28,57 % de functions. El umbral de 70 % solo se exige a la API. Extenderlo es agregar el paquete a `enforcedPackages`, pero hoy ambos fallarían.
-- **No hay pruebas contra Mockoon.** El cliente de notificaciones se prueba con un `fetch` simulado (`notifications.client.test.ts`), y las pruebas de integración no lo usan: pasan igual con Mockoon detenido. Ninguna prueba automatizada comprueba que las rutas y el formato que envía la API coincidan con los de `packages/mocks/notifications.json`.
+- **No hay pruebas contra Mockoon.** El cliente de notificaciones se prueba con un `fetch` simulado (`notifications.client.test.ts`), y las pruebas de integración no lo usan: pasan igual con Mockoon detenido (`docker compose stop mockoon && pnpm test:integration`; se vuelve a levantar con `docker compose start mockoon`). Ninguna prueba automatizada comprueba que las rutas y el formato que envía la API coincidan con los de `packages/mocks/notifications.json`.
 - **El CI no se ha ejecutado en GitHub.** El workflow existe y sus pasos se probaron en local.
 - **No hay ESLint.** El paso de lint del CI es `tsc --noEmit`, y la regla de capas se cumple por convención.
 - **El margen de la API en functions es corto:** 72,62 % contra el umbral de 70 %.
