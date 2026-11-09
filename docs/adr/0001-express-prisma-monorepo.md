@@ -5,7 +5,9 @@
 
 ## Contexto
 
-El proyecto tiene tres aplicaciones que hablan el mismo idioma: la API, la web y la CLI de administración. Las tres necesitan los mismos contratos: cuerpos de solicitud, respuestas y errores. El curso pone tres condiciones:
+El proyecto tiene tres aplicaciones que hablan el mismo idioma: la API, la web y la CLI de administración. Las tres necesitan los mismos contratos: cuerpos de solicitud, respuestas y errores.
+
+**Condiciones del proyecto de curso (según el enunciado):**
 - La API debe estar en TypeScript y organizada en cuatro capas estrictas (rutas y middleware → controladores → servicios → repositorios).
 - Solo los repositorios pueden tocar la base.
 - La regla de no traslapar reservas debe quedar protegida en PostgreSQL con una restricción `EXCLUDE USING gist`.
