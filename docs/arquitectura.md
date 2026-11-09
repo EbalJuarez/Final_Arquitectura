@@ -264,7 +264,7 @@ sequenceDiagram
     A->>UR: findUserByEmail
     UR->>DB: SELECT User
     alt Correo inexistente
-        A->>A: verifica contra un hash de relleno (para igualar el tiempo; no medido)
+        A->>A: verifica contra un hash de relleno (para igualar el tiempo#59; no medido)
         A-->>R: AppError 401
         R-->>U: 401 INVALID_CREDENTIALS (vía errors.ts)
     else Contraseña incorrecta (argon2 verify)
