@@ -59,7 +59,7 @@ flowchart TB
     subgraph compose["docker compose, proyecto reservalab"]
         web["web<br/>nginx con el build de Vite<br/>host :8080 → 80"]
         api["api<br/>Node 22, Express 5, Prisma 6<br/>host :3000 → 3000"]
-        pg[("postgres<br/>postgres:16-alpine<br/>host :5433 → 5432<br/>volumen postgres-data")]
+        pg[("postgres<br/>postgres:16-alpine<br/>host :POSTGRES_PORT (5433 en .env.example) → 5432<br/>volumen postgres-data")]
         redis[("redis<br/>redis:7-alpine<br/>host :6379, sin persistencia")]
         mock["mockoon<br/>mockoon/cli:9.9.0<br/>host :3001"]
     end
