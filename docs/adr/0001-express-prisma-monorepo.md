@@ -30,7 +30,7 @@ Todo debe levantarse con `docker compose up`. El equipo es de tres personas y el
   - La API valida las solicitudes con ellos y genera OpenAPI a partir de ellos ([ADR 0008](0008-documentacion-openapi-desde-zod.md)).
   - La CLI y la web validan cada respuesta de la API con los mismos esquemas, y la web también valida los formularios de login y registro con ellos.
   - El paquete expone su código TypeScript directamente (`main: src/index.ts`), sin paso de build propio. Cada app lo compila con su herramienta: esbuild en la API y Vite en la web.
-- **Turborepo** corre `build`, `typecheck` y `test` en todos los paquetes en el orden de sus dependencias (`dependsOn: ["^build"]`).
+- **Turborepo** corre `build`, `typecheck`, `test` y `test:coverage` en todos los paquetes en el orden de sus dependencias: `^build` para el build y las pruebas, y `^typecheck` para typecheck.
 - **La imagen de la API instala solo lo que necesita.** Usa `pnpm install --filter @reservalab/api...` y `pnpm deploy --prod`.
 
 ## Alternativas descartadas
