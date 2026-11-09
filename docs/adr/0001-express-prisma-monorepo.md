@@ -21,7 +21,7 @@ Todo debe levantarse con `docker compose up`. El equipo es de tres personas y el
 **Prisma 6 como acceso a datos.**
 - **El esquema y las migraciones viven en `apps/api/prisma/`.** El cliente que se genera tipa cada consulta de los repositorios.
 - **Lo que Prisma no expresa va en SQL manual.** La restricción `EXCLUDE` y el `CHECK` de fechas están en una migración escrita a mano (`20261029015948_reservation_constraints`), que `prisma migrate deploy` aplica igual que las demás.
-- **Solo `src/lib/prisma.ts` y `src/repositories/` importan Prisma.** Por eso las pruebas de servicios reemplazan los repositorios con `vi.mock` y corren sin base.
+- **Dentro del flujo de una solicitud, solo `src/repositories/` usa Prisma.** El cliente se crea en `src/lib/prisma.ts`, y fuera de las capas solo lo importa `src/server.ts`, para desconectarlo al apagar. Por eso las pruebas de servicios reemplazan los repositorios con `vi.mock` y corren sin base.
 - **Versión fijada en 6.19.3.** Prisma 7 cambia la configuración: el arranque ya avisa que `package.json#prisma` desaparece en esa versión. Migrar queda fuera del alcance de esta entrega.
 
 **Monorepo con workspaces de pnpm y Turborepo.**
