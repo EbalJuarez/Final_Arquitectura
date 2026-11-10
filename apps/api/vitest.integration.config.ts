@@ -19,6 +19,9 @@ export default defineConfig({
   test: {
     env,
     testTimeout: 20_000,
+    // Un archivo a la vez: comparten Redis, y claves como la de /now son globales. En paralelo, un archivo
+    // podría llenar la caché entre el borrado y la primera consulta de otro.
+    fileParallelism: false,
     projects: [
       // pnpm test:integration: PostgreSQL y Redis reales; las notificaciones se simulan o no se revisan
       { extends: true, test: { name: 'integracion', include: ['test/integration/**/*.int.test.ts'] } },

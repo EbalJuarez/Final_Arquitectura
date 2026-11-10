@@ -1,13 +1,20 @@
 import { randomUUID } from 'node:crypto';
-import { AvailabilityResponseSchema, ReservationSchema } from '@reservalab/shared';
+import { AvailabilityResponseSchema, NowResponseSchema, ReservationSchema, SpaceSchema } from '@reservalab/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { generateApiKey, hashApiKey } from '../../src/lib/api-keys';
 import { prisma } from '../../src/lib/prisma';
 import { redis } from '../../src/lib/redis';
-import { availabilityGroup, availabilityKey } from '../../src/services/cache-keys';
+import {
+  NOW_KEY,
+  SPACES_NAMESPACE,
+  availabilityGroup,
+  availabilityKey,
+  spacesListKey,
+} from '../../src/services/cache-keys';
 import { createTestUser, newRunId, startTestServer, type TestServer } from './helpers';
 
 // Integración contra PostgreSQL y Redis reales: la caché de disponibilidad a través de HTTP, con la
-// invalidación al reservar y cancelar.
+// invalidación al reservar y cancelar, y la cabecera X-Cache de GET /spaces y GET /now.
 
 const RUN_ID = newRunId();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,6 +28,16 @@ let server: TestServer;
 let userId: string;
 let token: string;
 const spaceIds: string[] = [];
+// API key read:now propia de la ejecución, creada directo en la base (GET /now no acepta JWT)
+let nowKey: { id: string; key: string };
+// Filtro de edificio propio de la ejecución: su clave del listado no la comparte ninguna otra prueba
+const LIST_BUILDING = `Caché listado ${RUN_ID}`;
+
+// Clave del listado filtrado por LIST_BUILDING con la versión actual del espacio de nombres
+async function spacesListCacheKey(): Promise<string> {
+  const version = Number((await redis.get(`version:${SPACES_NAMESPACE}`)) ?? 0);
+  return spacesListKey(version, { building: LIST_BUILDING });
+}
 
 function api(path: string, init: RequestInit = {}) {
   return fetch(`${server.baseUrl}/api/v1${path}`, {
@@ -59,6 +76,12 @@ beforeAll(async () => {
     spaceIds.push(space.id);
   }
 
+  const { key, prefix } = generateApiKey();
+  const record = await prisma.apiKey.create({
+    data: { name: `Caché /now ${RUN_ID}`, prefix, keyHash: hashApiKey(key), permissions: ['read:now'] },
+  });
+  nowKey = { id: record.id, key };
+
   server = await startTestServer();
   // Por si quedó algo de una ejecución interrumpida con los mismos ids (no debería)
   await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
@@ -67,6 +90,14 @@ beforeAll(async () => {
 afterAll(async () => {
   if (redis.isOpen) {
     await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
+    await redis.del([await spacesListCacheKey(), NOW_KEY]);
+    if (nowKey) {
+      const counters = await redis.keys(`rate-limit:api-key:${nowKey.id}:*`);
+      if (counters.length > 0) await redis.del(counters);
+    }
+  }
+  if (nowKey) {
+    await prisma.apiKey.delete({ where: { id: nowKey.id } });
   }
   if (spaceIds.length > 0) {
     await prisma.reservation.deleteMany({ where: { spaceId: { in: spaceIds } } });
@@ -139,5 +170,41 @@ describe('caché de disponibilidad con Redis real', () => {
     expect(badRequest.headers.get('x-cache')).toBeNull();
     expect(await redis.exists(availabilityKey(unknownSpace, DATE))).toBe(0);
     expect(await redis.exists(availabilityKey(spaceIds[0]!, '2026-13-45'))).toBe(0);
+  });
+});
+
+describe('cabecera X-Cache en GET /spaces y GET /now', () => {
+  it('GET /spaces: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo', async () => {
+    // Sin depender de lo que hayan dejado otras pruebas: se borra la clave de este listado
+    await redis.del(await spacesListCacheKey());
+    const list = () => api(`/spaces?building=${encodeURIComponent(LIST_BUILDING)}`);
+
+    const first = await list();
+    const second = await list();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.headers.get('x-cache')).toBe('MISS');
+    expect(second.headers.get('x-cache')).toBe('HIT');
+    const firstBody = SpaceSchema.array().parse(await first.json());
+    expect(SpaceSchema.array().parse(await second.json())).toEqual(firstBody);
+    expect(await redis.exists(await spacesListCacheKey())).toBe(1);
+  });
+
+  it('GET /now: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo', async () => {
+    // /now usa una sola clave para todos los espacios; se borra para no heredar el estado de otra prueba
+    await redis.del(NOW_KEY);
+    const now = () => fetch(`${server.baseUrl}/api/v1/now`, { headers: { 'X-API-Key': nowKey.key } });
+
+    const first = await now();
+    const second = await now();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.headers.get('x-cache')).toBe('MISS');
+    expect(second.headers.get('x-cache')).toBe('HIT');
+    const firstBody = NowResponseSchema.parse(await first.json());
+    expect(NowResponseSchema.parse(await second.json())).toEqual(firstBody);
+    expect(await redis.exists(NOW_KEY)).toBe(1);
   });
 });
