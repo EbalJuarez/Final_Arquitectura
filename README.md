@@ -384,7 +384,7 @@ Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a
 
 ## Reparto por integrante
 
-Según el historial de Git. El repositorio no tiene pull requests ni merges: todo el trabajo entró directo a `main`, salvo el cierre de la entrega, que está en la rama `chore/cierre-entrega`.
+Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en `main`. Los cambios de pruebas de integración con Mockoon y aislamiento se proponen en el [PR #1](https://github.com/EbalJuarez/Final_Arquitectura/pull/1), pendiente de revisión.
 
 | Integrante | Responsabilidad | Evidencia (ramas/PR) |
 |---|---|---|
@@ -396,11 +396,15 @@ Según el historial de Git. El repositorio no tiene pull requests ni merges: tod
 
 En este proyecto usamos dos herramientas de IA de Anthropic:
 
-- **Claude (chat):** para planificar el trabajo y revisar decisiones, código y documentación.
-- **Claude Code:** para generar y modificar código, pruebas, configuración y documentación del repositorio.
+- **Claude (chat):** para planificar las fases, redactar los prompts para Claude Code, revisar los reportes compartidos en la conversación y aconsejar sobre el orden de trabajo y los riesgos. No escribió código en el repositorio ni tuvo acceso directo a él.
+- **Claude Code:** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts.
 
-Lo usamos bajo la dirección de `<COMPLETAR: quién o quiénes>`, que definían cada tarea y sus criterios de aceptación. Todo cambio pasó por revisión humana antes de integrarse. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
+Las decisiones humanas incluyeron elegir el stack y la arquitectura (pnpm + Turborepo, Express 5 + Prisma 6, PostgreSQL con `EXCLUDE`, Redis, Mockoon y las cuatro capas), definir el orden de las fases, aprobar correcciones y autorizar operaciones como los push y la apertura del PR. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
 
-- **Partes en las que se usó:** Claude (chat) para planificar fases, redactar prompts y revisar resultados. Claude Code para generar y modificar código, pruebas, ADR, documentación y configuración de Docker, siguiendo esos prompts.
+- **Partes en las que se usó:** Claude (chat) para planificar, preparar prompts, revisar reportes y aconsejar sobre prioridades y riesgos. Claude Code para implementar y modificar código, pruebas, ADR, arquitectura, Docker, CI, seed y documentación.
 - **Cómo se verificó:** revisión humana de cada fase, pruebas unitarias y de integración con Vitest, cobertura con umbral de 70 % en la API, y prueba completa desde un clon limpio con `docker compose up`.
-- **Partes hechas sin IA:** `<COMPLETAR, o borrar si no aplica>`.
+- **Partes hechas sin IA:** las decisiones de arquitectura y prioridades, la aprobación de las correcciones y las autorizaciones de operaciones Git fueron humanas.
+
+## Forma de entrega
+
+- **Forma de entrega solicitada por el curso:** `<COMPLETAR: forma de entrega>`.
