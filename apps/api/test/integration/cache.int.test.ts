@@ -87,9 +87,11 @@ beforeAll(async () => {
   await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
 });
 
-// Cada prueba empieza con la caché de disponibilidad de sus espacios vacía, para no depender del orden
-// ni de lo que haya dejado otra prueba.
+// Cada prueba empieza sin reservas en sus espacios y con su caché de disponibilidad vacía, para no
+// depender del orden ni de lo que haya dejado otra prueba (por ejemplo, el bloque que reserva una prueba
+// haría responder 409 a la siguiente). Las reservas se borran antes que la caché.
 beforeEach(async () => {
+  await prisma.reservation.deleteMany({ where: { spaceId: { in: spaceIds } } });
   await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
 });
 
