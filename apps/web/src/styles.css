@@ -408,7 +408,7 @@ form.card button[type='submit'] {
   border-color: var(--busy);
 }
 
-/* ---------- Espacios y bloques ---------- */
+/* ---------- Espacios ---------- */
 
 .space-list {
   display: flex;
@@ -419,82 +419,301 @@ form.card button[type='submit'] {
 
 .space {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
+  font-weight: 400;
   background: var(--surface);
   color: var(--text);
-  border-color: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+.space strong {
+  font-weight: 650;
+}
+
+.space span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .space:hover {
-  background: var(--accent-soft);
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
-.space.selected {
-  border: 2px solid var(--accent);
+/* Seleccionado: además del color, una marca ✓ y el borde más grueso */
+.space.selected,
+.space.selected:hover {
   background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
+
+.space.selected strong::before {
+  content: '✓ ';
+  color: var(--accent);
+}
+
+/* ---------- Bloques del día ---------- */
 
 .blocks {
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 0;
-  margin: var(--space-2) 0 var(--space-4);
+  margin: var(--space-3) 0 var(--space-4);
 }
 
 .block {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
+  min-height: 48px;
   padding: var(--space-2) var(--space-3);
-  margin-bottom: 6px;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   border-left: 6px solid;
 }
 
 .block.free {
   background: var(--free-bg);
   border-color: var(--free);
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
 }
 
+/* Ocupado: rayado, para que se distinga también sin color */
 .block.occupied {
-  background: var(--busy-bg);
-  border-color: var(--busy);
+  background: repeating-linear-gradient(-45deg, var(--busy-bg) 0 10px, transparent 10px 20px), var(--busy-bg);
+  border-color: transparent transparent transparent var(--busy);
 }
 
 .block.past {
   background: var(--past-bg);
-  border-color: var(--border);
+  border-color: transparent transparent transparent var(--border-strong);
   color: var(--muted);
 }
 
 .block-time {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  min-width: 110px;
+  font-weight: 650;
+  min-width: 112px;
 }
 
 .block-label {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
 }
 
-/* ---------- Mis reservas ---------- */
+/* Icono junto al texto del estado (decorativo: el texto ya dice Libre, Ocupado o Ya pasó) */
+.block-label::before {
+  display: inline-grid;
+  place-items: center;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: var(--radius-pill);
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.block.free .block-label {
+  color: var(--free);
+}
+
+.block.free .block-label::before {
+  content: '✓';
+  content: '✓' / '';
+  background: var(--free);
+  color: var(--on-status);
+}
+
+.block.occupied .block-label {
+  color: var(--busy);
+}
+
+.block.occupied .block-label::before {
+  content: '✕';
+  content: '✕' / '';
+  background: var(--busy);
+  color: var(--on-status);
+}
+
+.block.past .block-label::before {
+  content: '–';
+  content: '–' / '';
+  border: 1px solid var(--border-strong);
+}
+
+.block button {
+  min-height: 34px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.88rem;
+}
+
+/* ---------- Mis reservas: cada reserva es una tarjeta ---------- */
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 var(--space-2);
 }
 
-th,
+th {
+  text-align: left;
+  padding: 0 var(--space-3);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
 td {
   text-align: left;
-  padding: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+td:first-child {
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius) 0 0 var(--radius);
+  font-weight: 600;
+}
+
+td:last-child {
+  border-right: 1px solid var(--border);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  text-align: right;
+}
+
+tbody tr {
+  transition: transform var(--duration) var(--ease);
+}
+
+tbody tr td {
+  transition: box-shadow var(--duration) var(--ease);
+}
+
+tbody tr:hover td {
+  box-shadow: 0 4px 10px -6px rgb(16 24 40 / 0.25);
 }
 
 tr.cancelled td {
   color: var(--muted);
+  background: var(--past-bg);
   text-decoration: line-through;
+}
+
+tr.cancelled td:first-child {
+  border-left-color: var(--border-strong);
+}
+
+/* En pantallas angostas la tabla se apila: una tarjeta por reserva con el nombre de cada dato */
+@media (max-width: 640px) {
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  tr.cancelled {
+    border-left-color: var(--border-strong);
+    background: var(--past-bg);
+  }
+
+  td,
+  td:first-child,
+  td:last-child {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: right;
+  }
+
+  td:first-child {
+    padding-top: var(--space-3);
+    text-align: left;
+  }
+
+  td:last-child:empty {
+    display: none;
+  }
+
+  td:last-child {
+    padding-bottom: var(--space-3);
+  }
+
+  td:last-child button {
+    width: 100%;
+  }
+
+  td:nth-child(2)::before,
+  td:nth-child(3)::before,
+  td:nth-child(4)::before {
+    color: var(--muted);
+    font-weight: 600;
+    text-decoration: none;
+    text-align: left;
+  }
+
+  td:nth-child(2)::before {
+    content: 'Fecha';
+  }
+
+  td:nth-child(3)::before {
+    content: 'Horario';
+  }
+
+  td:nth-child(4)::before {
+    content: 'Estado';
+  }
+
+  tbody tr:hover td {
+    box-shadow: none;
+  }
 }
 
 /* ---------- Pantalla informativa ---------- */
