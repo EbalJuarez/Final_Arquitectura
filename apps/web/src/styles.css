@@ -718,52 +718,104 @@ tr.cancelled td:first-child {
 
 /* ---------- Pantalla informativa ---------- */
 
+/* Pensada para verse de lejos en un monitor: ancho completo, letra grande y filas amplias */
 .info-screen {
   max-width: none;
+  padding-inline: clamp(var(--space-4), 3vw, 48px);
+}
+
+.info-screen > h1 {
+  font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
+  margin-bottom: var(--space-2);
+}
+
+/* Línea de estado: hora de actualización y cuántos están ocupados */
+.info-screen > p.muted {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: 6px var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.15rem);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Punto que late para indicar que la pantalla se actualiza sola */
+.info-screen > p.muted::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--free);
+  animation: pulse 2s var(--ease) infinite;
 }
 
 .now-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: var(--space-4);
 }
 
+.now-grid > p {
+  grid-column: 1 / -1;
+}
+
 .now-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5);
   background: var(--surface);
-  border-radius: var(--radius);
-  padding: var(--space-4);
-  border-top: 8px solid;
+  border: 1px solid var(--border);
+  border-left: 10px solid;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
 
 .now-card.available {
-  border-color: var(--free);
+  border-left-color: var(--free);
+  background: linear-gradient(90deg, var(--free-bg), var(--surface) 70%);
 }
 
 .now-card.busy {
-  border-color: var(--busy);
+  border-left-color: var(--busy);
+  background: linear-gradient(90deg, var(--busy-bg), var(--surface) 70%);
 }
 
 .now-card header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-1);
 }
 
 .now-card h2 {
-  font-size: 1.3rem;
+  font-size: clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
   margin: 0;
 }
 
 .now-card p {
-  margin: var(--space-2) 0 0;
-  font-size: 1.05rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 0.95rem + 0.45vw, 1.3rem);
+  font-variant-numeric: tabular-nums;
 }
 
+/* Estado en texto (LIBRE / OCUPADO) con color e icono */
 .badge {
-  padding: var(--space-1) 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-4);
   border-radius: var(--radius-pill);
-  font-weight: 700;
+  font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: 0.05em;
   color: var(--on-status);
 }
 
@@ -771,11 +823,34 @@ tr.cancelled td:first-child {
   background: var(--free);
 }
 
+.available .badge::before {
+  content: '✓';
+  content: '✓' / '';
+}
+
 .busy .badge {
   background: var(--busy);
+}
+
+.busy .badge::before {
+  content: '✕';
+  content: '✕' / '';
 }
 
 .until {
   font-weight: 700;
   color: var(--busy);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
 }
