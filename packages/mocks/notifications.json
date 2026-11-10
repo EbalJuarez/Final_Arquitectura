@@ -69,6 +69,68 @@
       "responseMode": null,
       "streamingMode": null,
       "streamingInterval": 0
+    },
+    {
+      "uuid": "b1f5c0de-0000-4000-8000-000000000031",
+      "type": "http",
+      "documentation": "Solo para pruebas: el servicio de notificaciones falla con 500",
+      "method": "post",
+      "endpoint": "simular-500/notifications/reservation-confirmed",
+      "responses": [
+        {
+          "uuid": "b1f5c0de-0000-4000-8000-000000000032",
+          "body": "{\n  \"error\": \"fallo simulado\"\n}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "Error simulado",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "b1f5c0de-0000-4000-8000-000000000041",
+      "type": "http",
+      "documentation": "Solo para pruebas: el servicio tarda 3 s, más que NOTIFICATIONS_TIMEOUT_MS (2 s)",
+      "method": "post",
+      "endpoint": "simular-demora/notifications/reservation-confirmed",
+      "responses": [
+        {
+          "uuid": "b1f5c0de-0000-4000-8000-000000000042",
+          "body": "{\n  \"status\": \"accepted\",\n  \"event\": \"reservation-confirmed\"\n}",
+          "latency": 3000,
+          "statusCode": 202,
+          "label": "Aceptada con demora",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
     }
   ],
   "rootChildren": [
@@ -79,6 +141,14 @@
     {
       "type": "route",
       "uuid": "b1f5c0de-0000-4000-8000-000000000012"
+    },
+    {
+      "type": "route",
+      "uuid": "b1f5c0de-0000-4000-8000-000000000031"
+    },
+    {
+      "type": "route",
+      "uuid": "b1f5c0de-0000-4000-8000-000000000041"
     }
   ],
   "proxyMode": false,

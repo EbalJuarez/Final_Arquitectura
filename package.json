@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "test:coverage": "node scripts/test-coverage.mjs",
     "test:integration": "turbo run test:integration",
+    "test:integration:mockoon": "turbo run test:integration:mockoon",
     "cli": "pnpm --silent --filter @reservalab/cli start"
   },
   "devDependencies": {
