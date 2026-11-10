@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AvailabilityResponseSchema, NowResponseSchema, ReservationSchema, SpaceSchema } from '@reservalab/shared';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { generateApiKey, hashApiKey } from '../../src/lib/api-keys';
 import { prisma } from '../../src/lib/prisma';
 import { redis } from '../../src/lib/redis';
@@ -84,6 +84,12 @@ beforeAll(async () => {
 
   server = await startTestServer();
   // Por si quedó algo de una ejecución interrumpida con los mismos ids (no debería)
+  await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
+});
+
+// Cada prueba empieza con la caché de disponibilidad de sus espacios vacía, para no depender del orden
+// ni de lo que haya dejado otra prueba.
+beforeEach(async () => {
   await redis.del(spaceIds.flatMap((id) => [availabilityKey(id, DATE), availabilityGroup(id)]));
 });
 
