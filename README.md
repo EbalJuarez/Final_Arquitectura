@@ -62,6 +62,7 @@ pnpm typecheck          # tipos de todos los paquetes
 pnpm test               # pruebas unitarias (no usan la base ni la red)
 pnpm test:coverage      # las mismas, con cobertura por paquete y umbral
 pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis reales
+pnpm test:integration:mockoon  # avisos de reservas contra el Mockoon real (docker compose up -d); se omiten si Mockoon no responde
 ```
 
 `pnpm test:coverage` corre Vitest con cobertura en cada paquete vía Turborepo y al final imprime una tabla por paquete. El umbral está en un solo lugar, [`coverage.thresholds.json`](coverage.thresholds.json):

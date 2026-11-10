@@ -38,6 +38,13 @@
     },
     "test:integration": {
       "cache": false
+    },
+    "test:integration:mockoon": {
+      "cache": false,
+      "passThroughEnv": [
+        "MOCKOON_REQUIRED",
+        "MOCKOON_ADMIN_API_TOKEN"
+      ]
     }
   }
 }
