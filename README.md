@@ -76,13 +76,14 @@ En GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), cada
 - **Verificación:** `pnpm typecheck` como lint, porque el repo no tiene ESLint; después `pnpm test` y `pnpm test:coverage`.
 - **Integración:** `pnpm test:integration` con PostgreSQL 16 y Redis 7 como servicios, y después `pnpm test:integration:mockoon` con Mockoon levantado por `docker run` en un paso del job.
 
-Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Hoy comprueban tres cosas:
+Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Los archivos corren uno a la vez (`fileParallelism: false` en `apps/api/vitest.integration.config.ts`): comparten Redis, y la clave de `/now` es una sola para todos los espacios, así que en paralelo un archivo podría llenarla entre el borrado y la consulta de otro. Hoy comprueban tres cosas:
 - Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
 - El ciclo de vida de una API key: crearla, llamar a `/now` (200), revocarla y volver a llamar (401). También que una key sin `read:now` recibe 403.
 - La caché de disponibilidad:
   - Dos consultas seguidas dan `MISS` y luego `HIT`.
   - Después de reservar, la consulta da `MISS` y ya muestra el bloque ocupado. Después de cancelar vuelve a estar libre.
   - Reservar en un espacio no toca la caché de otro.
+  - `GET /spaces` y `GET /now` también dan `MISS` y luego `HIT`.
   - Los 404 y 400 no se guardan.
 
 Las utilidades comunes (servidor en un puerto libre, Redis conectado y usuario de prueba con token) están en `apps/api/test/integration/helpers.ts`.

@@ -37,11 +37,17 @@ En la primera ejecución de 5b también falló «crear una key, llamar a /now (2
 - **Por qué:** recibió la clave `now` que había dejado en Redis una corrida anterior.
 - **Cómo se comprobó:** al repetir 5b solo falló la prueba nueva, y la corrida sin rotura que vino justo después dio 14 de 14.
 
-El problema existía antes de este cambio, y se reprodujo con el código original:
-- **La prueba deja la clave en Redis:** `api-keys-now.int.test.ts` guarda `now` (hasta 60 s) y no la borra.
-- **Corrido dos veces seguidas:** el archivo solo pasó la primera vez y falló la segunda.
-- **Con el orden mezclado** (`--sequence.shuffle`, 5 semillas), las pruebas de disponibilidad que ya existían en `cache.int.test.ts` también fallaron en las 5 corridas, porque no borran sus claves entre una prueba y otra.
-- **Las dos pruebas nuevas** pasaron en todas las corridas mezcladas y también corridas solas.
+**Corregido.** Las pruebas de integración dependían del estado que dejaban otras pruebas y del orden. Con el código original, correr dos veces seguidas `api-keys-now.int.test.ts` fallaba la segunda vez, y con `--sequence.shuffle` las pruebas de disponibilidad fallaban en 5 de 5 corridas. Se corrigió en tres commits, solo de pruebas:
+
+| Commit | Qué cambió |
+|---|---|
+| `d99baf9` | `api-keys-now.int.test.ts` borra la clave `now` de Redis en `beforeAll` y en `afterAll`. Antes dejaba guardado un `/now` con su espacio (hasta 60 s) y la ejecución siguiente lo recibía. |
+| `f0ec297` | `cache.int.test.ts` borra las claves de disponibilidad de sus espacios en un `beforeEach`. |
+| `60f3f2b` | Ese `beforeEach` también borra las reservas de la ejecución. Borrar las claves no bastaba: «dos espacios no se contaminan» deja una reserva de 9:00 a 11:00, y si corría antes, «reservar invalida…» recibía 409. |
+
+Verificación posterior:
+- **Tres corridas seguidas** de `pnpm test:integration`, sin pausa: 14 de 14 las tres.
+- **Nueve corridas con `--sequence.shuffle`** (semillas 11, 22, 33, 44, 55, 1, 2, 3 y 4): 14 de 14 en todas.
 
 ## Entorno aislado de la rotura 1
 
