@@ -17,8 +17,16 @@ if (!['localhost', '127.0.0.1'].includes(databaseHost)) {
 
 export default defineConfig({
   test: {
-    include: ['test/integration/**/*.int.test.ts'],
     env,
     testTimeout: 20_000,
+    // Un archivo a la vez: comparten Redis, y claves como la de /now son globales. En paralelo, un archivo
+    // podría llenar la caché entre el borrado y la primera consulta de otro.
+    fileParallelism: false,
+    projects: [
+      // pnpm test:integration: PostgreSQL y Redis reales; las notificaciones se simulan o no se revisan
+      { extends: true, test: { name: 'integracion', include: ['test/integration/**/*.int.test.ts'] } },
+      // pnpm test:integration:mockoon: notificaciones contra el Mockoon real; se omiten si no está disponible
+      { extends: true, test: { name: 'mockoon', include: ['test/integration/**/*.mockoon.test.ts'] } },
+    ],
   },
 });

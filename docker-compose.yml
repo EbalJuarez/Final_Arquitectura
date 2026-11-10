@@ -37,6 +37,9 @@ services:
     image: mockoon/cli:9.9.0
     restart: unless-stopped
     command: ["--data", "/data/notifications.json", "--port", "3001", "--log-transaction"]
+    environment:
+      # Token del admin API de Mockoon (/mockoon-admin/logs): las pruebas lo usan para ver qué avisos llegaron
+      MOCKOON_ADMIN_API_TOKEN: ${MOCKOON_ADMIN_API_TOKEN:-token_admin_mockoon_falso}
     ports:
       - "${NOTIFICATIONS_PORT:-3001}:3001"
     volumes:

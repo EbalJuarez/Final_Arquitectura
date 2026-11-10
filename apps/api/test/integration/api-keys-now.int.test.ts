@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hashApiKey } from '../../src/lib/api-keys';
 import { prisma } from '../../src/lib/prisma';
 import { redis } from '../../src/lib/redis';
+import { NOW_KEY } from '../../src/services/cache-keys';
 import { createTestUser, newRunId, startTestServer, type TestServer } from './helpers';
 
 // Integración contra PostgreSQL y Redis reales: el ciclo de vida de una API key a través de HTTP,
@@ -57,9 +58,16 @@ beforeAll(async () => {
   });
 
   server = await startTestServer();
+  // La reserva se insertó directo, sin invalidar la caché: /now no debe responder con lo que haya
+  // guardado otra ejecución (la clave es una sola para todos los espacios).
+  await redis.del(NOW_KEY);
 });
 
 afterAll(async () => {
+  // No dejar en Redis un /now con el espacio de esta ejecución, que se borra a continuación
+  if (redis.isOpen) {
+    await redis.del(NOW_KEY);
+  }
   if (createdKeyIds.length > 0) {
     const counters = await redis.keys('rate-limit:api-key:*');
     const ours = counters.filter((counter) => createdKeyIds.some((id) => counter.includes(id)));

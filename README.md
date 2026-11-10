@@ -62,6 +62,7 @@ pnpm typecheck          # tipos de todos los paquetes
 pnpm test               # pruebas unitarias (no usan la base ni la red)
 pnpm test:coverage      # las mismas, con cobertura por paquete y umbral
 pnpm test:integration   # pruebas de integración contra PostgreSQL y Redis reales
+pnpm test:integration:mockoon  # avisos de reservas contra el Mockoon real (docker compose up -d); se omiten si Mockoon no responde
 ```
 
 `pnpm test:coverage` corre Vitest con cobertura en cada paquete vía Turborepo y al final imprime una tabla por paquete. El umbral está en un solo lugar, [`coverage.thresholds.json`](coverage.thresholds.json):
@@ -73,15 +74,16 @@ El reporte HTML de cada paquete queda en `apps/<paquete>/coverage/index.html`.
 
 En GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), cada push y cada pull request corren dos jobs, con Node 22 (de `.nvmrc`):
 - **Verificación:** `pnpm typecheck` como lint, porque el repo no tiene ESLint; después `pnpm test` y `pnpm test:coverage`.
-- **Integración:** `pnpm test:integration` con PostgreSQL 16 y Redis 7 como servicios.
+- **Integración:** `pnpm test:integration` con PostgreSQL 16 y Redis 7 como servicios, y después `pnpm test:integration:mockoon` con Mockoon levantado por `docker run` en un paso del job.
 
-Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Hoy comprueban tres cosas:
+Las pruebas de integración necesitan `docker compose up -d`, las migraciones aplicadas y el `.env` de la raíz. Por seguridad, solo corren si `DATABASE_URL` apunta a `localhost`. Cada ejecución crea su propio usuario y espacio, y los borra al terminar, junto con sus claves en Redis. Los archivos corren uno a la vez (`fileParallelism: false` en `apps/api/vitest.integration.config.ts`): comparten Redis, y la clave de `/now` es una sola para todos los espacios, así que en paralelo un archivo podría llenarla entre el borrado y la consulta de otro. Hoy comprueban tres cosas:
 - Dos `POST /reservations` simultáneos al mismo horario dan exactamente un 201 y un 409.
 - El ciclo de vida de una API key: crearla, llamar a `/now` (200), revocarla y volver a llamar (401). También que una key sin `read:now` recibe 403.
 - La caché de disponibilidad:
   - Dos consultas seguidas dan `MISS` y luego `HIT`.
   - Después de reservar, la consulta da `MISS` y ya muestra el bloque ocupado. Después de cancelar vuelve a estar libre.
   - Reservar en un espacio no toca la caché de otro.
+  - `GET /spaces` y `GET /now` también dan `MISS` y luego `HIT`.
   - Los 404 y 400 no se guardan.
 
 Las utilidades comunes (servidor en un puerto libre, Redis conectado y usuario de prueba con token) están en `apps/api/test/integration/helpers.ts`.
@@ -382,23 +384,24 @@ Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a
 
 ## Reparto por integrante
 
-Según el historial de Git. El repositorio no tiene pull requests ni merges: todo el trabajo entró directo a `main`, salvo el cierre de la entrega, que está en la rama `chore/cierre-entrega`.
+Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en `main`. Los cambios de pruebas de integración con Mockoon y aislamiento se proponen en el [PR #1](https://github.com/EbalJuarez/Final_Arquitectura/pull/1), pendiente de revisión.
 
 | Integrante | Responsabilidad | Evidencia (ramas/PR) |
 |---|---|---|
-| EbalJuarez `<COMPLETAR: nombre completo y carné>` | Estructura inicial del monorepo y Docker Compose; esquema de Prisma con la migración anti-traslape; autenticación JWT con refresh token; reservas con notificaciones y reintento ante deadlock; caché con Redis y su medición de latencia; ADR 0002, 0004, 0005 y 0007. En la rama de cierre: seed automático, `test:coverage` y CI, ADR 0001, documento de arquitectura y prueba de clon limpio. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 39 commits, de `a059867` (2026-10-28) a `3d1e30d` (2026-11-02), sobre todo en `apps/api`, infraestructura y `docs/adr`. `chore/cierre-entrega`: 25 commits, de `9bddd25` a `4ef62ef` (2026-11-09), hechos con Claude Code bajo su usuario de Git. |
-| Gorozco710 `<COMPLETAR: nombre completo y carné>` | Espacios (esquemas, CRUD con filtros y disponibilidad diaria); API keys con permisos y límite por minuto en Redis; `GET /now`; CLI de administración; ADR 0003 y 0006. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 20 commits, de `d99c23a` a `90d1efc` (2026-11-02), en `apps/api`, `apps/cli`, `packages/shared` y `docs/adr`. |
-| Yoshua-G12 `<COMPLETAR: nombre completo y carné>` | Documentación OpenAPI en `/docs` y su prueba; la web (login, reservas y pantalla informativa) y su servicio con nginx; key de la pantalla informativa en el seed; ADR 0008 y 0009. Otras contribuciones: `<COMPLETAR: otras contribuciones>` | `main`: 12 commits, de `5717d59` a `72c4a19` (2026-11-02), principalmente en `apps/web`, y también en `apps/api`, `packages/shared` y `docs/adr`. |
+| Ebal Juarez — carné 202408025 (`EbalJuarez`) | Estructura inicial del monorepo y Docker Compose; esquema de Prisma con la migración anti-traslape; autenticación JWT con refresh token; reservas con notificaciones y reintento ante deadlock; caché con Redis y su medición de latencia; ADR 0002, 0004, 0005 y 0007. En la rama de cierre: seed automático, `test:coverage` y CI, ADR 0001, documento de arquitectura y prueba de clon limpio. | `main`: 39 commits, de `a059867` (2026-10-28) a `3d1e30d` (2026-11-02), sobre todo en `apps/api`, archivos de la raíz (Docker, configuración, README) y `docs/adr`. `chore/cierre-entrega`: commits de `9bddd25` a `4ef62ef` (2026-11-09), hechos con Claude Code bajo su usuario de Git. PR #1 (`test/mockoon-y-roturas`): 12 commits, desde `7812486` (2026-11-09) hasta este ajuste del README (2026-11-10), también con Claude Code. |
+| Geovanny Orozco — carné 202408038 (`Gorozco710`) | Espacios (esquemas, CRUD con filtros y disponibilidad diaria); API keys con permisos y límite por minuto en Redis; `GET /now`; CLI de administración; ADR 0003 y 0006. | `main`: 20 commits, de `d99c23a` a `90d1efc` (2026-11-02), en `apps/api`, `apps/cli`, `packages/shared` y `docs/adr`. |
+| Yoshua Gonzalez — carné 202408012 (`Yoshua-G12`) | Documentación OpenAPI en `/docs` y su prueba; la web (login, reservas y pantalla informativa) y su servicio con nginx; key de la pantalla informativa en el seed; ADR 0008 y 0009. | `main`: 12 commits, de `5717d59` a `72c4a19` (2026-11-02), principalmente en `apps/web`, y también en `apps/api`, `packages/shared` y `docs/adr`. |
 
 ## Uso de inteligencia artificial
 
 En este proyecto usamos dos herramientas de IA de Anthropic:
 
-- **Claude (chat):** para planificar el trabajo y revisar decisiones, código y documentación.
-- **Claude Code:** para generar y modificar código, pruebas, configuración y documentación del repositorio.
+- **Claude (chat):** para planificar las fases, redactar los prompts para Claude Code, revisar los reportes compartidos en la conversación y aconsejar sobre el orden de trabajo y los riesgos. No escribió código en el repositorio ni tuvo acceso directo a él.
+- **Claude Code (solo en los commits de EbalJuarez: la rama `chore/cierre-entrega` y el PR #1):** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts.
 
-Lo usamos bajo la dirección de `<COMPLETAR: quién o quiénes>`, que definían cada tarea y sus criterios de aceptación. Todo cambio pasó por revisión humana antes de integrarse. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
+Las decisiones humanas incluyeron elegir el stack y la arquitectura (pnpm + Turborepo, Express 5 + Prisma 6, PostgreSQL con `EXCLUDE`, Redis, Mockoon y las cuatro capas), definir el orden de las fases, aprobar correcciones y autorizar operaciones como los push y la apertura del PR. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
 
-- **Partes en las que se usó:** Claude (chat) para planificar fases, redactar prompts y revisar resultados. Claude Code para generar y modificar código, pruebas, ADR, documentación y configuración de Docker, siguiendo esos prompts.
+- **Partes en las que se usó:** Claude (chat) para planificar, preparar prompts, revisar reportes y aconsejar sobre prioridades y riesgos. Claude Code para implementar y modificar código, pruebas, ADR, arquitectura, Docker, CI, seed y documentación.
 - **Cómo se verificó:** revisión humana de cada fase, pruebas unitarias y de integración con Vitest, cobertura con umbral de 70 % en la API, y prueba completa desde un clon limpio con `docker compose up`.
-- **Partes hechas sin IA:** `<COMPLETAR, o borrar si no aplica>`.
+- **Partes hechas sin IA:** las decisiones de arquitectura y prioridades, la aprobación de las correcciones y las autorizaciones de operaciones Git fueron humanas.
+- **Commits de Gorozco710 y Yoshua-G12:** usaron asistentes de inteligencia artificial durante el desarrollo de sus partes del proyecto. El detalle de las tareas en las que se usaron no queda registrado en el historial de Git.
