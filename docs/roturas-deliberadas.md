@@ -19,9 +19,29 @@ Solo se anota lo que se ejecutó.
 | 4 | Que el límite por API key deje pasar todas las solicitudes | `src/services/rate-limit.service.ts`: `allowed: count <= limit` → `allowed: true` | Unitarias (`rate-limit.service.test.ts`), 2 de 234:<br>• «con el contador en 61: allowed=false y quedan 0»<br>• «con el contador en 200: allowed=false y quedan 0»<br>La integración pasó 12 de 12. | **Detectada** |
 | 4b | La misma rotura, en el middleware | `src/middleware/rate-limit.ts`: `if (!result.allowed)` → `if (false)` | Unitarias (`rate-limit.test.ts`), 1 de 234: «al superar el límite responde 429 con Retry-After» | **Detectada** |
 | 5 | Que la caché no envíe el encabezado `X-Cache` | En los tres controladores que lo envían (`now.controller.ts:6`, `space.controller.ts:16` y `:38`), `res.set('X-Cache', cache).json(data)` → `res.json(data)` | Integración (`cache.int.test.ts`), 3 de 12:<br>• «dos consultas seguidas: MISS y luego HIT con el mismo cuerpo»<br>• «reservar invalida: la consulta siguiente es MISS…»<br>• «dos espacios no se contaminan…»<br>Las unitarias pasaron 234 de 234. | **Detectada** (solo por integración, y solo en disponibilidad) |
-| 5b | Quitar `X-Cache` solo de `GET /now` | `now.controller.ts:6`, igual que arriba | Ninguna: unitarias 234 de 234, integración 12 de 12, Mockoon 4 de 4 | **No detectada**: hueco de cobertura |
-| 5c | Quitar `X-Cache` solo de `GET /spaces` (listado) | `space.controller.ts:16`, igual que arriba | Ninguna: unitarias 234 de 234, integración 12 de 12, Mockoon 4 de 4 | **No detectada**: hueco de cobertura |
+| 5b | Quitar `X-Cache` solo de `GET /now` | `now.controller.ts:6`, igual que arriba | Ninguna: unitarias 234 de 234, integración 12 de 12, Mockoon 4 de 4 | **No detectada**: hueco de cobertura. **Tras agregar la prueba:** detectada por «GET /now: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo» |
+| 5c | Quitar `X-Cache` solo de `GET /spaces` (listado) | `space.controller.ts:16`, igual que arriba | Ninguna: unitarias 234 de 234, integración 12 de 12, Mockoon 4 de 4 | **No detectada**: hueco de cobertura. **Tras agregar la prueba:** detectada por «GET /spaces: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo» |
 | 6 | Que el refresh token revocado siga siendo válido | `src/services/auth.service.ts`: `if (!stored \|\| stored.revokedAt \|\| stored.expiresAt <= new Date())` → `if (!stored \|\| stored.expiresAt <= new Date())` | Unitarias (`auth.service.test.ts`), 1 de 234: «refresh › responde 401 con un token revocado» | **Detectada** |
+
+## Roturas 5b y 5c tras agregar la prueba
+
+El commit `0e916f3` agregó a `test/integration/cache.int.test.ts` el bloque «cabecera X-Cache en GET /spaces y GET /now», con dos pruebas. Las dos roturas se volvieron a aplicar, una por vez y sin commitear, con el mismo cambio de la tabla. En cada una se corrió `--project integracion`, que ya tenía 14 pruebas, y se revirtió con `git checkout -- .`; `git status` quedó vacío las dos veces.
+
+| # | Rotura | Prueba(s) que fallaron | Resultado |
+|---|---|---|---|
+| 5b | Sin `X-Cache` en `GET /now` | «GET /now: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo» (`expected null to be 'MISS'`). 1 de 14. | **Detectada** por esa prueba |
+| 5c | Sin `X-Cache` en `GET /spaces` | «GET /spaces: MISS en la primera consulta y HIT en la segunda, con el mismo cuerpo». 1 de 14. | **Detectada** por esa prueba |
+
+En la primera ejecución de 5b también falló «crear una key, llamar a /now (200), revocarla…» de `api-keys-now.int.test.ts`. Esa falla no la causa la rotura, porque esa prueba no revisa `X-Cache`:
+- **Qué falló:** su espacio no aparecía en la respuesta de `/now`.
+- **Por qué:** recibió la clave `now` que había dejado en Redis una corrida anterior.
+- **Cómo se comprobó:** al repetir 5b solo falló la prueba nueva, y la corrida sin rotura que vino justo después dio 14 de 14.
+
+El problema existía antes de este cambio, y se reprodujo con el código original:
+- **La prueba deja la clave en Redis:** `api-keys-now.int.test.ts` guarda `now` (hasta 60 s) y no la borra.
+- **Corrido dos veces seguidas:** el archivo solo pasó la primera vez y falló la segunda.
+- **Con el orden mezclado** (`--sequence.shuffle`, 5 semillas), las pruebas de disponibilidad que ya existían en `cache.int.test.ts` también fallaron en las 5 corridas, porque no borran sus claves entre una prueba y otra.
+- **Las dos pruebas nuevas** pasaron en todas las corridas mezcladas y también corridas solas.
 
 ## Entorno aislado de la rotura 1
 
@@ -36,11 +56,11 @@ Controles previos, en el mismo contenedor:
 
 ## Huecos de cobertura y pruebas propuestas
 
-- **`X-Cache` en `GET /now` y en `GET /spaces` (roturas 5b y 5c).** Ninguna prueba automatizada revisa ese encabezado en esas dos rutas: `cache.int.test.ts` solo lo comprueba en disponibilidad. `scripts/prueba-clon-limpio.sh` sí revisa `X-Cache` en `/now`, pero se corre a mano.
+- **`X-Cache` en `GET /now` y en `GET /spaces` (roturas 5b y 5c). Cubierto en `0e916f3`** (ver «Roturas 5b y 5c tras agregar la prueba»). Lo que sigue es el registro original. Ninguna prueba automatizada revisa ese encabezado en esas dos rutas: `cache.int.test.ts` solo lo comprueba en disponibilidad. `scripts/prueba-clon-limpio.sh` sí revisa `X-Cache` en `/now`, pero se corre a mano.
   - **Prueba propuesta**, en `test/integration/cache.int.test.ts`, sin cambiar código de producción:
     - Dos `GET /spaces?building=<edificio de la ejecución>` seguidos dan `MISS` y luego `HIT`, y crear un espacio en ese edificio vuelve a dar `MISS`.
     - Dos `GET /now` con una API key `read:now` creada en la prueba dan `MISS` y luego `HIT`.
-  - **Pendiente:** no está escrita; espera visto bueno.
+  - **Pendiente:** no está escrita; espera visto bueno. *(Se escribió después en `0e916f3`, con el visto bueno.)*
 - **Reintento ante deadlock en integración (rotura 2).** Lo detectan las unitarias, que simulan el error 40P01. La prueba de concurrencia real no produjo ningún deadlock en 3 ejecuciones, así que no garantiza detectarla. El ADR 0004 registra que antes del reintento la API respondía 500 en 3 de 4 ejecuciones. Hoy la carrera depende del momento en que llega cada solicitud.
   - **No se propone una prueba nueva:** forzar el deadlock de forma determinista exigiría controlar las transacciones desde la prueba o cambiar el repositorio.
   - **Efecto lateral observado:** en `reservation.repository.test.ts` las respuestas simuladas de una prueba se filtran a la siguiente.
