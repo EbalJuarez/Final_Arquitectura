@@ -388,7 +388,7 @@ Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en
 
 | Integrante | Responsabilidad | Evidencia (ramas/PR) |
 |---|---|---|
-| Ebal Juarez — carné 202408025 (`EbalJuarez`) | Estructura inicial del monorepo y Docker Compose; esquema de Prisma con la migración anti-traslape; autenticación JWT con refresh token; reservas con notificaciones y reintento ante deadlock; caché con Redis y su medición de latencia; ADR 0002, 0004, 0005 y 0007. En la rama de cierre: seed automático, `test:coverage` y CI, ADR 0001, documento de arquitectura y prueba de clon limpio. | `main`: 39 commits, de `a059867` (2026-10-28) a `3d1e30d` (2026-11-02), sobre todo en `apps/api`, infraestructura y `docs/adr`. `chore/cierre-entrega`: 25 commits, de `9bddd25` a `4ef62ef` (2026-11-09), hechos con Claude Code bajo su usuario de Git. |
+| Ebal Juarez — carné 202408025 (`EbalJuarez`) | Estructura inicial del monorepo y Docker Compose; esquema de Prisma con la migración anti-traslape; autenticación JWT con refresh token; reservas con notificaciones y reintento ante deadlock; caché con Redis y su medición de latencia; ADR 0002, 0004, 0005 y 0007. En la rama de cierre: seed automático, `test:coverage` y CI, ADR 0001, documento de arquitectura y prueba de clon limpio. | `main`: 39 commits, de `a059867` (2026-10-28) a `3d1e30d` (2026-11-02), sobre todo en `apps/api`, archivos de la raíz (Docker, configuración, README) y `docs/adr`. `chore/cierre-entrega`: commits de `9bddd25` a `4ef62ef` (2026-11-09), hechos con Claude Code bajo su usuario de Git. PR #1 (`test/mockoon-y-roturas`): 12 commits, desde `7812486` (2026-11-09) hasta este ajuste del README (2026-11-10), también con Claude Code. |
 | Geovanny Orozco — carné 202408038 (`Gorozco710`) | Espacios (esquemas, CRUD con filtros y disponibilidad diaria); API keys con permisos y límite por minuto en Redis; `GET /now`; CLI de administración; ADR 0003 y 0006. | `main`: 20 commits, de `d99c23a` a `90d1efc` (2026-11-02), en `apps/api`, `apps/cli`, `packages/shared` y `docs/adr`. |
 | Yoshua Gonzalez — carné 202408012 (`Yoshua-G12`) | Documentación OpenAPI en `/docs` y su prueba; la web (login, reservas y pantalla informativa) y su servicio con nginx; key de la pantalla informativa en el seed; ADR 0008 y 0009. | `main`: 12 commits, de `5717d59` a `72c4a19` (2026-11-02), principalmente en `apps/web`, y también en `apps/api`, `packages/shared` y `docs/adr`. |
 
@@ -397,14 +397,11 @@ Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en
 En este proyecto usamos dos herramientas de IA de Anthropic:
 
 - **Claude (chat):** para planificar las fases, redactar los prompts para Claude Code, revisar los reportes compartidos en la conversación y aconsejar sobre el orden de trabajo y los riesgos. No escribió código en el repositorio ni tuvo acceso directo a él.
-- **Claude Code:** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts.
+- **Claude Code (solo en los commits de EbalJuarez: la rama `chore/cierre-entrega` y el PR #1):** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts.
 
 Las decisiones humanas incluyeron elegir el stack y la arquitectura (pnpm + Turborepo, Express 5 + Prisma 6, PostgreSQL con `EXCLUDE`, Redis, Mockoon y las cuatro capas), definir el orden de las fases, aprobar correcciones y autorizar operaciones como los push y la apertura del PR. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
 
 - **Partes en las que se usó:** Claude (chat) para planificar, preparar prompts, revisar reportes y aconsejar sobre prioridades y riesgos. Claude Code para implementar y modificar código, pruebas, ADR, arquitectura, Docker, CI, seed y documentación.
 - **Cómo se verificó:** revisión humana de cada fase, pruebas unitarias y de integración con Vitest, cobertura con umbral de 70 % en la API, y prueba completa desde un clon limpio con `docker compose up`.
 - **Partes hechas sin IA:** las decisiones de arquitectura y prioridades, la aprobación de las correcciones y las autorizaciones de operaciones Git fueron humanas.
-
-## Forma de entrega
-
-- **Forma de entrega solicitada por el curso:** `<COMPLETAR: forma de entrega>`.
+- **Commits de Gorozco710 y Yoshua-G12:** usaron asistentes de inteligencia artificial durante el desarrollo de sus partes del proyecto. El detalle de las tareas en las que se usaron no queda registrado en el historial de Git.
