@@ -496,7 +496,9 @@ form.card button[type='submit'] {
 
 /* Ocupado: rayado, para que se distinga también sin color */
 .block.occupied {
-  background: repeating-linear-gradient(-45deg, var(--busy-bg) 0 10px, transparent 10px 20px), var(--busy-bg);
+  background:
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--busy) 9%, transparent) 0 8px, transparent 8px 16px),
+    var(--busy-bg);
   border-color: transparent transparent transparent var(--busy);
 }
 
@@ -663,8 +665,9 @@ tr.cancelled td:first-child {
   td,
   td:first-child,
   td:last-child {
+    position: relative;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
     border: 0;
@@ -674,6 +677,7 @@ tr.cancelled td:first-child {
   }
 
   td:first-child {
+    justify-content: flex-start;
     padding-top: var(--space-3);
     text-align: left;
   }
@@ -693,9 +697,11 @@ tr.cancelled td:first-child {
   td:nth-child(2)::before,
   td:nth-child(3)::before,
   td:nth-child(4)::before {
+    /* Fuera del flujo para que no herede el tachado de las reservas canceladas */
+    position: absolute;
+    left: var(--space-3);
     color: var(--muted);
     font-weight: 600;
-    text-decoration: none;
     text-align: left;
   }
 
@@ -788,16 +794,28 @@ tr.cancelled td:first-child {
 
 .now-card header {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-3);
   margin-bottom: var(--space-1);
 }
 
 .now-card h2 {
+  flex: 1;
+  min-width: 0;
   font-size: clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
   margin: 0;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.now-card .badge {
+  flex: none;
+}
+
+/* En la pantalla informativa la barra superior usa el mismo ancho completo que el contenido */
+body:has(.info-screen) .topbar {
+  padding-inline: clamp(var(--space-4), 3vw, 48px);
 }
 
 .now-card p {
@@ -1001,6 +1019,11 @@ input:focus-visible {
   .filters button,
   .reserve-form button {
     width: 100%;
+  }
+
+  .space {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .now-card {
