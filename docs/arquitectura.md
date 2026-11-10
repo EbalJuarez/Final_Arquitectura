@@ -308,7 +308,7 @@ El access token no consulta la base al verificarse: lo valida `middleware/authen
 
 ## 7. Atributos de calidad medibles
 
-Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `pnpm test:integration` el 2026-11-09, sobre la rama `chore/cierre-entrega`. Los tiempos salen de [docs/benchmarks/cache.md](benchmarks/cache.md).
+Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage --force`, `pnpm test:integration` y `MOCKOON_REQUIRED=1 pnpm test:integration:mockoon` el 2026-11-10, sobre `main` (`9d0bfb1`, con los PR #1 y #2 integrados). Los tiempos salen de [docs/benchmarks/cache.md](benchmarks/cache.md).
 
 ### Integridad
 
@@ -345,13 +345,15 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 
 | Atributo | Métrica | Cómo se mide | Resultado |
 |---|---|---|---|
-| Cobertura de la API | % de lines, statements, branches y functions; umbral de 70 % en las cuatro ([`coverage.thresholds.json`](../coverage.thresholds.json)) | `pnpm test:coverage` (Vitest con v8), 234 pruebas unitarias | Lines 83,62 %, statements 83,98 %, branches 83,47 %, functions 72,62 %. Pasa el umbral. |
-| Cobertura de la CLI | Igual | `pnpm test:coverage` | Lines 43,90 %, statements 43,34 %, branches 50,00 %, functions 50,94 %. Sin umbral. |
-| Cobertura de la web | Igual | `pnpm test:coverage` | Lines 23,03 %, statements 23,54 %, branches 20,77 %, functions 28,57 %. Sin umbral. |
-| Pruebas de integración | Pruebas que pasan contra PostgreSQL y Redis reales | `pnpm test:integration` | 12 de 12 (3 archivos) |
+| Cobertura de la API | % de lines, statements, branches y functions; umbral de 70 % en las cuatro ([`coverage.thresholds.json`](../coverage.thresholds.json)) | `pnpm test:coverage` (Vitest con v8), 234 pruebas | Lines 83,62 %, statements 83,98 %, branches 83,47 %, functions 72,62 %. Pasa el umbral. |
+| Cobertura de la CLI | Igual | `pnpm test:coverage`, 67 pruebas aprobadas y 1 omitida | Lines 95,60 %, statements 94,84 %, branches 95,37 %, functions 94,33 %. Sin umbral. |
+| Cobertura de la web | Igual | `pnpm test:coverage`, 53 pruebas | Lines 42,27 %, statements 43,65 %, branches 49,75 %, functions 51,64 %. Sin umbral. |
+| Cobertura combinada (API + CLI + web) | Suma de lo cubierto sobre la suma del total de los tres paquetes | Totales de `coverage-summary.json` de cada paquete tras `pnpm test:coverage` | Lines 73,06 % (811/1110), statements 73,37 % (879/1198), branches 73,03 % (398/545), functions 70,28 % (227/323). Es la medida de hoy: no tiene umbral automático. |
+| Pruebas de integración | Pruebas que pasan contra PostgreSQL y Redis reales | `pnpm test:integration` | 14 de 14 (3 archivos) |
+| Pruebas contra Mockoon | Avisos de reservas que llegan al Mockoon real | `MOCKOON_REQUIRED=1 pnpm test:integration:mockoon` | 4 de 4 (1 archivo) |
 | Separación en 4 capas | Rutas, middleware, controladores o servicios que importan Prisma | `grep` sobre `apps/api/src` (ver sección 4) | 0. Fuera de los repositorios solo lo importan `lib/prisma.ts` y `server.ts` (para desconectar al apagar). No hay regla de lint ni prueba que lo haga cumplir solo. |
 | Contrato documentado | Rutas de Express ausentes en OpenAPI | `docs/openapi.test.ts` recorre los routers y compara con el documento | 0 (la prueba falla si falta una) |
-| Integración continua | Ejecuciones en verde en GitHub Actions | `.github/workflows/ci.yml` | **Sin medición:** el flujo todavía no se ha ejecutado en GitHub |
+| Integración continua | Ejecuciones en verde en GitHub Actions | `.github/workflows/ci.yml`, PR #1 y PR #2 | Typecheck, pruebas unitarias, cobertura, integración y Mockoon pasaron en GitHub Actions en ambos PR antes de integrarlos. |
 
 ## 8. Decisiones
 
@@ -370,9 +372,8 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 ## 9. Limitaciones conocidas
 
 **Pruebas y calidad**
-- **Cobertura de la CLI y la web sin umbral.** La CLI está en 43,90 % de lines y 50,94 % de functions; la web, en 23,03 % de lines y 28,57 % de functions. El umbral de 70 % solo se exige a la API. Extenderlo es agregar el paquete a `enforcedPackages`, pero hoy ambos fallarían.
-- **No hay pruebas contra Mockoon.** El cliente de notificaciones se prueba con un `fetch` simulado (`notifications.client.test.ts`), y las pruebas de integración no lo usan: pasan igual con Mockoon detenido (`docker compose stop mockoon && pnpm test:integration`; se vuelve a levantar con `docker compose start mockoon`). Ninguna prueba automatizada comprueba que las rutas y el formato que envía la API coincidan con los de `packages/mocks/notifications.json`.
-- **El CI no se ha ejecutado en GitHub.** El workflow existe y sus pasos se probaron en local.
+- **Cobertura de la CLI y la web sin umbral.** En la última medición, la CLI está en 95,60 % de lines y 94,33 % de functions; la web, en 42,27 % de lines y 51,64 % de functions. El umbral de 70 % solo se exige a la API. La cobertura combinada (73,06 % de lines y 70,28 % de functions) es una medición, no un umbral: ningún comando falla si baja.
+- **Las pruebas contra Mockoon necesitan la pila levantada.** Sin `MOCKOON_REQUIRED=1` se omiten si Mockoon no responde; el CI las corre con esa variable para que la falta de Mockoon sea un error.
 - **No hay ESLint.** El paso de lint del CI es `tsc --noEmit`, y la regla de capas se cumple por convención.
 - **El margen de la API en functions es corto:** 72,62 % contra el umbral de 70 %.
 

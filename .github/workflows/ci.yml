@@ -1,5 +1,5 @@
 # Integración continua: instala, revisa tipos, corre las pruebas unitarias con cobertura y las de
-# integración contra PostgreSQL y Redis reales.
+# integración contra PostgreSQL y Redis reales, y las de notificaciones contra Mockoon.
 name: CI
 
 on:
@@ -100,3 +100,24 @@ jobs:
 
       - name: Pruebas de integración
         run: pnpm test:integration
+
+      # Mockoon no puede ser un service del job: necesita packages/mocks/notifications.json, y los services
+      # arrancan antes del checkout. Se levanta aquí con la misma imagen y el token de .env.example.
+      - name: Levantar Mockoon
+        run: |
+          docker run -d --name mockoon -p 3001:3001 \
+            -e MOCKOON_ADMIN_API_TOKEN=token_admin_mockoon_falso \
+            -v "$PWD/packages/mocks/notifications.json:/data/notifications.json:ro" \
+            mockoon/cli:9.9.0 --data /data/notifications.json --port 3001
+          for i in $(seq 1 30); do
+            curl -sf -H "Authorization: Bearer token_admin_mockoon_falso" http://localhost:3001/mockoon-admin/logs >/dev/null && exit 0
+            sleep 1
+          done
+          docker logs mockoon
+          exit 1
+
+      # MOCKOON_REQUIRED=1: si Mockoon no responde, las pruebas fallan en lugar de omitirse.
+      - name: Pruebas de notificaciones contra Mockoon
+        run: pnpm test:integration:mockoon
+        env:
+          MOCKOON_REQUIRED: '1'
