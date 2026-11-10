@@ -70,6 +70,17 @@ pnpm test:integration:mockoon  # avisos de reservas contra el Mockoon real (dock
 - **A quién se exige:** por ahora solo a la API. Si algún paquete exigido queda por debajo, el comando falla.
 - **Cómo cambiarlo:** para exigirlo también a la CLI o a la web, se agrega `@reservalab/cli` o `@reservalab/web` a `enforcedPackages`. Las métricas se cambian en `metrics`.
 
+Cobertura medida con `pnpm test:coverage --force` el 2026-11-10 sobre `main`:
+
+| Paquete | Lines | Statements | Branches | Functions | Umbral automático |
+|---|---|---|---|---|---|
+| API | 83,62 % | 83,98 % | 83,47 % | 72,62 % | 70 % en las cuatro (se cumple) |
+| CLI | 95,60 % | 94,84 % | 95,37 % | 94,33 % | No |
+| Web | 42,27 % | 43,65 % | 49,75 % | 51,64 % | No |
+| Combinada (API + CLI + web) | 73,06 % (811/1110) | 73,37 % (879/1198) | 73,03 % (398/545) | 70,28 % (227/323) | No |
+
+El único umbral que el comando hace cumplir es el de la API (70 %). La combinada suma lo cubierto y el total de los tres paquetes: es la medida de hoy, sin umbral automático, así que ningún comando falla si baja.
+
 El reporte HTML de cada paquete queda en `apps/<paquete>/coverage/index.html`.
 
 En GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), cada push y cada pull request corren dos jobs, con Node 22 (de `.nvmrc`):
@@ -384,7 +395,7 @@ Vite lee `VITE_INFO_API_KEY` del `.env` de la raíz. `API_PROXY_TARGET` cambia a
 
 ## Reparto por integrante
 
-Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en `main`. Los cambios de pruebas de integración con Mockoon y aislamiento se proponen en el [PR #1](https://github.com/EbalJuarez/Final_Arquitectura/pull/1), pendiente de revisión.
+Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en `main`. Las pruebas de integración con Mockoon y el aislamiento ([PR #1](https://github.com/EbalJuarez/Final_Arquitectura/pull/1)) y las pruebas de la CLI y la web ([PR #2](https://github.com/EbalJuarez/Final_Arquitectura/pull/2)) también están integradas en `main`.
 
 | Integrante | Responsabilidad | Evidencia (ramas/PR) |
 |---|---|---|
@@ -394,10 +405,11 @@ Según el historial de Git. La rama `chore/cierre-entrega` ya está integrada en
 
 ## Uso de inteligencia artificial
 
-En este proyecto usamos dos herramientas de IA de Anthropic:
+En este proyecto usamos dos herramientas de IA de Anthropic y, en tres commits, GitHub Copilot:
 
 - **Claude (chat):** para planificar las fases, redactar los prompts para Claude Code, revisar los reportes compartidos en la conversación y aconsejar sobre el orden de trabajo y los riesgos. No escribió código en el repositorio ni tuvo acceso directo a él.
-- **Claude Code (solo en los commits de EbalJuarez: la rama `chore/cierre-entrega` y el PR #1):** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts.
+- **Claude Code (solo en los commits de EbalJuarez: la rama `chore/cierre-entrega`, los PR #1 y #2 y esta actualización de la documentación):** para escribir y modificar el código, las pruebas, los ADR, el documento de arquitectura, la configuración de Docker y CI, el seed automático, las pruebas contra Mockoon y la documentación de roturas deliberadas, siguiendo esos prompts. Las pruebas de la CLI y de la web del PR #2 se escribieron con Claude Code.
+- **GitHub Copilot:** en la rama del PR #2, los commits `af97a1b` y `bc5958a` (documento de arquitectura) y el merge `d4b15d3` de `main`, hechos bajo el usuario de Git de EbalJuarez.
 
 Las decisiones humanas incluyeron elegir el stack y la arquitectura (pnpm + Turborepo, Express 5 + Prisma 6, PostgreSQL con `EXCLUDE`, Redis, Mockoon y las cuatro capas), definir el orden de las fases, aprobar correcciones y autorizar operaciones como los push y la apertura del PR. Los commits no llevan línea de coautoría de la IA, así que esta sección es el registro de su uso.
 
