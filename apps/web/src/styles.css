@@ -854,3 +854,156 @@ tr.cancelled td:first-child {
     transform: scale(0.8);
   }
 }
+
+/* ---------- Estados vacíos, de carga y de error ---------- */
+
+/* Un párrafo muted que es lo único dentro de su caja es un estado vacío o de carga:
+   "No hay espacios…", "Todavía no tienes reservas.", "Elige un espacio…", "Cargando…" */
+.space-list > p.muted:only-child,
+.now-grid > p:only-child,
+.card div > p.muted:only-child {
+  margin: var(--space-2) 0;
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.now-grid > p:only-child {
+  font-size: 1.25rem;
+}
+
+/* Avisos con icono además del color */
+.notice {
+  position: relative;
+  padding-left: calc(var(--space-4) + 1.75em);
+  box-shadow: var(--shadow-sm);
+}
+
+.notice::before {
+  position: absolute;
+  left: var(--space-3);
+  top: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: var(--radius-pill);
+  font-size: 0.9em;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--on-status);
+}
+
+.notice-info::before {
+  content: 'i';
+  content: 'i' / '';
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.notice-success::before {
+  content: '✓';
+  content: '✓' / '';
+  background: var(--free);
+}
+
+.notice-error::before {
+  content: '!';
+  content: '!' / '';
+  background: var(--busy);
+}
+
+.notice-error strong {
+  color: var(--busy);
+}
+
+/* ---------- Movimiento ---------- */
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Solo lo que aparece por una acción; las tarjetas de la pantalla informativa se redibujan cada 30 s
+   y no se animan para que no parpadeen */
+.card,
+.notice,
+.blocks,
+tbody tr {
+  animation: appear 220ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Accesibilidad ---------- */
+
+/* Foco visible solo con teclado; el anillo usa el color de foco del tema */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 5px var(--focus);
+}
+
+/* La etiqueta del campo cambia de color cuando su input tiene el foco */
+.field:focus-within span {
+  color: var(--accent);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+  main {
+    padding: var(--space-4) var(--space-3) var(--space-5);
+  }
+
+  .card {
+    padding: var(--space-4);
+    border-radius: var(--radius);
+  }
+
+  .topbar {
+    position: static;
+  }
+
+  .topbar nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .topbar .session {
+    margin-left: auto;
+  }
+
+  .filters button,
+  .reserve-form button {
+    width: 100%;
+  }
+
+  .now-card {
+    padding: var(--space-4);
+  }
+}
