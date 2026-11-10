@@ -351,7 +351,7 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 | Pruebas de integración | Pruebas que pasan contra PostgreSQL y Redis reales | `pnpm test:integration` | 12 de 12 (3 archivos) |
 | Separación en 4 capas | Rutas, middleware, controladores o servicios que importan Prisma | `grep` sobre `apps/api/src` (ver sección 4) | 0. Fuera de los repositorios solo lo importan `lib/prisma.ts` y `server.ts` (para desconectar al apagar). No hay regla de lint ni prueba que lo haga cumplir solo. |
 | Contrato documentado | Rutas de Express ausentes en OpenAPI | `docs/openapi.test.ts` recorre los routers y compara con el documento | 0 (la prueba falla si falta una) |
-| Integración continua | Ejecuciones en verde en GitHub Actions | `.github/workflows/ci.yml`, PR #1 y PR #2 | Typecheck, pruebas unitarias, cobertura e integración en verde en ambos PR. |
+| Integración continua | Ejecuciones en verde en GitHub Actions | `.github/workflows/ci.yml`, PR #1 | Typecheck, pruebas unitarias, cobertura e integración pasaron en GitHub Actions. |
 
 ## 8. Decisiones
 
@@ -371,8 +371,7 @@ Las cifras de cobertura y de pruebas salen de ejecutar `pnpm test:coverage` y `p
 
 **Pruebas y calidad**
 - **Cobertura de la CLI y la web sin umbral.** En la última medición, la CLI está en 95,60 % de lines y 94,33 % de functions; la web, en 42,27 % de lines y 51,64 % de functions. El umbral de 70 % solo se exige a la API.
-- **No hay pruebas contra Mockoon.** El cliente de notificaciones se prueba con un `fetch` simulado (`notifications.client.test.ts`), y las pruebas de integración no lo usan: pasan igual con Mockoon detenido (`docker compose stop mockoon && pnpm test:integration`; se vuelve a levantar con `docker compose start mockoon`). Ninguna prueba automatizada comprueba que las rutas y el formato que envía la API coincidan con los de `packages/mocks/notifications.json`.
-- **El CI no se ha ejecutado en GitHub.** El workflow existe y sus pasos se probaron en local.
+- **Las pruebas contra Mockoon aún no están integradas en `main`.** El PR #1 las agrega y sus checks de CI pasaron; mientras siga abierto, `main` conserva la cobertura anterior.
 - **No hay ESLint.** El paso de lint del CI es `tsc --noEmit`, y la regla de capas se cumple por convención.
 - **El margen de la API en functions es corto:** 72,62 % contra el umbral de 70 %.
 
